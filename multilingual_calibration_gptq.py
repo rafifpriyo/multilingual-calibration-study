@@ -20,6 +20,8 @@ from datasets import load_dataset
 from gptqmodel import GPTQModel, QuantizeConfig
 
 from transformers import AutoTokenizer
+from huggingface_hub import create_repo
+from huggingface_hub import HfApi
 
 """# Parameter"""
 
@@ -57,20 +59,19 @@ dataset_id = "openlanguagedata/flores_plus"
 quantization_technique = "gptq"
 bit_lst = [4, 8]
 
-output_path_gptq = f"./model_{quantization_technique}_{{bit}}bit_{{lang}}"
+output_path_gptq = f"./{model_id.split("/")[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
 
 ## Calibration size
 NUM_CALIBRATION_SAMPLES=512
 MAX_SEQUENCE_LENGTH=2048
 
 # huggingface
-output_huggingface_gptq = f"fifrio/{model_id}-{quantization_technique}_{{bit}}bit_{{lang}}"
+output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}_{{bit}}bit_{{lang}}"
 
 """# Looping"""
 
 for bit in bit_lst:
     for lang, ISO_3 in zip(lang_lst, ISO_3_lst):
-
         """## Calibration data
 
         > https://huggingface.co/datasets/cambridgeltl/xcopa
@@ -99,7 +100,7 @@ for bit in bit_lst:
 
         """## GPTQ"""
 
-        quant_config = QuantizeConfig(bits=8, group_size=128, sym=False, lm_head=False, device=device)
+        quant_config = QuantizeConfig(bits=bit, group_size=128, sym=False, lm_head=False, device=device)
         model = GPTQModel.load(model_id, quant_config, token=hf_key)
 
         model.quantize(ds['text'][:NUM_CALIBRATION_SAMPLES], batch_size=1)
@@ -107,10 +108,8 @@ for bit in bit_lst:
 
         """# Upload to Huggingface"""
 
-        from huggingface_hub import create_repo
         create_repo(output_huggingface_gptq.format(bit=bit, lang=lang), repo_type="model", token=hf_key)
 
-        from huggingface_hub import HfApi
         api = HfApi(token=hf_key)
 
         api.upload_folder(

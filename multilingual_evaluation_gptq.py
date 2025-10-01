@@ -62,9 +62,9 @@ ISO_2_lst = ["et", "ht", "id", "it",
 result_path_gptq = f"./xcopa_{num_shot}shot_{quantization_technique}_{{bit}}bit_{{lang}}.json"
 
 # WandB Logging
-output_huggingface_gptq = f"fifrio/{model_id}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}"
+output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}"
 
-wandb_runname = f"{model_id}-{quantization_technique}-{{bit}}bit-{{lang}}-1"
+wandb_runname = f"{model_id.split("/")[-1]}-{quantization_technique}-{{bit}}bit-{{lang}}-1"
 
 """# Function"""
 
@@ -99,7 +99,7 @@ for bit in bit_lst:
         wandb_config = {
             'base_model': model_id,
             'quantization_technique': quantization_technique,
-            'bit_width': "4-bit",
+            'bit_width': f"{bit}-bit",
             "group_size": 128,
             "calibration_language": lang,
             'num_calibration_samples': 512,
