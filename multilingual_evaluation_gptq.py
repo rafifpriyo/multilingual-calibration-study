@@ -38,33 +38,52 @@ wandb_key = os.environ["WANDB_KEY"]
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
 batch_size = 1
-quantization_technique = "gptq"
 bit_lst = [4, 8]
 
 # Model
-model_id = "google/gemma-3-1b-it"
-model_path_gptq = f"./{model_id.split("/")[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
+model_id = "google/gemma-3-1b-pt"
 
 # Evaluation
+evaluation_dataset = "xnli"
 num_shot = 3
+apply_chat_template = False
+
+# Quantization Config
+quantization_technique = "gptq"
+granularity = "group",
+group_size = 128,
+num_calibration_samples = 512,
+max_sequence_length = 2048,
+symmetry = False,
 
 # Calibration Dataset
-lang_lst = ["Estonian", "Haitian", "Indonesian", "Italian",
-             "Quechua", "Swahili", "Tamil", "Thai",
-             "Turkish", "Vietnamese", "Chinese"]
-ISO_3_lst = ["ekk_Latn", "hat_Latn", "ind_Latn", "ita_Latn",
-             "quy_Latn", "swh_Latn", "tam_Taml", "tha_Thai",
-             "tur_Latn", "vie_Latn", "wuu_Hans"]
-ISO_2_lst = ["et", "ht", "id", "it",
-             "qu", "sw", "ta", "th",
-             "tr", "vi", "zh"]
+# lang_lst = ["Estonian", "Haitian", "Indonesian", "Italian",
+#              "Quechua", "Swahili", "Tamil", "Thai",
+#              "Turkish", "Vietnamese", "Chinese"]
+# ISO_3_lst = ["ekk_Latn", "hat_Latn", "ind_Latn", "ita_Latn",
+#              "quy_Latn", "swh_Latn", "tam_Taml", "tha_Thai",
+#              "tur_Latn", "vie_Latn", "wuu_Hans"]
+# ISO_2_lst = ["et", "ht", "id", "it",
+#              "qu", "sw", "ta", "th",
+#              "tr", "vi", "zh"]
 
-result_path_gptq = f"./xcopa_{num_shot}shot_{quantization_technique}_{{bit}}bit_{{lang}}.json"
+lang_lst = ["English", "Indonesian",
+             "Tamil",
+             "Chinese"]
+ISO_3_lst = ["eng_Latn", "ind_Latn",
+             "tam_Taml",
+             "wuu_Hans"]
+ISO_2_lst = ["en", "id",
+             "ta",
+             "zh"]
+
+model_path_gptq = f"./{model_id.split("/")[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
+result_path_gptq = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{{bit}}bit_{{lang}}.json"
 
 # WandB Logging
 output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}"
 
-wandb_runname = f"{model_id.split("/")[-1]}-{quantization_technique}-{{bit}}bit-{{lang}}-1"
+wandb_runname = f"{model_id.split("/")[-1]}-{quantization_technique}-{{bit}}bit-{{lang}}-{evaluation_dataset}"
 
 """# Function"""
 
@@ -81,14 +100,15 @@ def lm_eval_wrapper(model, tokenizer, device: str):
 def eval_model(model, device='cpu'):
   return simple_evaluate(
       model=model,
-      tasks=["xcopa",],
+      tasks=[evaluation_dataset],
             # "xwinograd",
             #  "xstorycloze"],
       device=device,
       num_fewshot=num_shot,
-      apply_chat_template = True,
+      apply_chat_template = apply_chat_template,
       gen_kwargs={'temperature': 0},
       predict_only=False,
+      log_samples=True,
       batch_size=1,
       random_seed=1234,
   )
@@ -99,14 +119,17 @@ for bit in bit_lst:
         wandb_config = {
             'base_model': model_id,
             'quantization_technique': quantization_technique,
+            'calibration_language': lang,
             'bit_width': f"{bit}-bit",
-            "group_size": 128,
-            "calibration_language": lang,
-            'num_calibration_samples': 512,
-            'max_sequence_length': 2048,
-            'symmetry': False,
+            "granularity": granularity,
+            "group_size": group_size,
+            'num_calibration_samples': num_calibration_samples,
+            'max_sequence_length': max_sequence_length,
+            'symmetry': symmetry,
             'output_huggingface': output_huggingface_gptq.format(bit=bit, lang=lang),
+            'evaluation_dataset': evaluation_dataset,
             'num_shot': num_shot,
+            'apply_chat_template': apply_chat_template,
         }
 
         """# GPTQ"""
@@ -144,7 +167,7 @@ for bit in bit_lst:
 
                 task = k.split("_")[0]
                 lang = k.split("_")[1]
-                if task == "xcopa":
+                if task == "xnli":
                     task_index = 0
                 elif task == "xwinograd":
                     task_index = 1
@@ -207,6 +230,6 @@ for bit in bit_lst:
 
             # Log Result
             columns = ["Eval Dataset", "Result"]
-            data = [["xcopa", pprint.pformat(result_gptq)]]
+            data = [["xnli", pprint.pformat(result_gptq)]]
             table = wandb.Table(data=data, columns=columns)
             run.log({"result": table})

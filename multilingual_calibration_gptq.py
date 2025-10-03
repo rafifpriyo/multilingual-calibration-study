@@ -38,18 +38,28 @@ wandb_key = os.environ["WANDB_KEY"]
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Model
-model_id = "google/gemma-3-1b-it"
+model_id = "google/gemma-3-1b-pt"
 
 # Calibration Dataset
-lang_lst = ["Estonian", "Haitian", "Indonesian", "Italian",
-             "Quechua", "Swahili", "Tamil", "Thai",
-             "Turkish", "Vietnamese", "Chinese"]
-ISO_3_lst = ["ekk_Latn", "hat_Latn", "ind_Latn", "ita_Latn",
-             "quy_Latn", "swh_Latn", "tam_Taml", "tha_Thai",
-             "tur_Latn", "vie_Latn", "wuu_Hans"]
-ISO_2_lst = ["et", "ht", "id", "it",
-             "qu", "sw", "ta", "th",
-             "tr", "vi", "zh"]
+# lang_lst = ["Estonian", "Haitian", "Indonesian", "Italian",
+#              "Quechua", "Swahili", "Tamil", "Thai",
+#              "Turkish", "Vietnamese", "Chinese"]
+# ISO_3_lst = ["ekk_Latn", "hat_Latn", "ind_Latn", "ita_Latn",
+#              "quy_Latn", "swh_Latn", "tam_Taml", "tha_Thai",
+#              "tur_Latn", "vie_Latn", "wuu_Hans"]
+# ISO_2_lst = ["et", "ht", "id", "it",
+#              "qu", "sw", "ta", "th",
+#              "tr", "vi", "zh"]
+
+lang_lst = ["English", "Indonesian",
+             "Tamil",
+             "Chinese"]
+ISO_3_lst = ["eng_Latn", "ind_Latn",
+             "tam_Taml",
+             "wuu_Hans"]
+ISO_2_lst = ["en", "id",
+             "ta",
+             "zh"]
 
 dataset_split = "dev"
 
@@ -62,6 +72,8 @@ bit_lst = [4, 8]
 output_path_gptq = f"./{model_id.split("/")[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
 
 ## Calibration size
+SYMMETRY = False
+GROUP_SIZE=128
 NUM_CALIBRATION_SAMPLES=512
 MAX_SEQUENCE_LENGTH=2048
 
@@ -100,7 +112,7 @@ for bit in bit_lst:
 
         """## GPTQ"""
 
-        quant_config = QuantizeConfig(bits=bit, group_size=128, sym=False, lm_head=False, device=device)
+        quant_config = QuantizeConfig(bits=bit, group_size=GROUP_SIZE, sym=SYMMETRY, lm_head=False, device=device)
         model = GPTQModel.load(model_id, quant_config, token=hf_key)
 
         model.quantize(ds['text'][:NUM_CALIBRATION_SAMPLES], batch_size=1)

@@ -81,4 +81,5 @@ dependency-overrides = { numpy = "==1.26.4" }
 
 [environments]
 cpu = ["cpu"]
+gpu = ["gpu"]
 default = ["gpu"]
