@@ -5,7 +5,7 @@ cp ./datautils.py ./slim-llm
 cp ./auto.py ./AutoGPTQ/auto_gptq/modeling
 cp ./__init__.py ./AutoGPTQ/auto_gptq
 
-%cd SliM-LLM/slim-llm
+cd slim-llm
 
 pixi run python run.py \
  "google/gemma-3-1b-pt" flores 4bit --dataset_subset Indonesian --groupsize 128 \
