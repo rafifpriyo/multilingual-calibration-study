@@ -25,6 +25,8 @@ wandb = "<=0.22.1"
 
 aiohttp = "==3.12.15"
 
+bitsandbytes = ">=0.48.1"
+
 logbar = ">=0.0.5"
 accelerate = ">=1.10.1"
 threadpoolctl = ">=3.6.0"
@@ -56,21 +58,14 @@ gptqmodel = "==4.2.0"
 no-build-isolation = ["gptqmodel"]
 
 [feature.gpu.system-requirements]
-cuda = "12.0"
-
-[feature.gpu.dependencies]
-cuda-version = "12.6.*"
-pytorch-gpu = "*"
+cuda = "12.8"
 
 [feature.gpu.pypi-options]
 dependency-overrides = { numpy = "==1.26.4" }
 
 [feature.gpu.pypi-dependencies]
-torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cu126"}
-torchvision = { version = ">=0.22.0", index = "https://download.pytorch.org/whl/cu126" }
-
-[feature.cpu.dependencies]
-pytorch-cpu = "*"
+torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cu128"}
+torchvision = { version = ">=0.22.0", index = "https://download.pytorch.org/whl/cu128" }
 
 [feature.cpu.pypi-dependencies]
 torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cpu"}

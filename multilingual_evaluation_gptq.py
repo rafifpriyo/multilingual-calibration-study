@@ -37,7 +37,7 @@ wandb_key = os.environ["WANDB_KEY"]
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
-batch_size = 1
+batch_size = 4
 bit_lst = [4, 8]
 
 # Model
@@ -67,13 +67,13 @@ symmetry = False,
 #              "qu", "sw", "ta", "th",
 #              "tr", "vi", "zh"]
 
-lang_lst = ["English", "Indonesian",
+lang_lst = ["Indonesian",
              "Tamil",
              "Chinese"]
-ISO_3_lst = ["eng_Latn", "ind_Latn",
+ISO_3_lst = ["ind_Latn",
              "tam_Taml",
              "wuu_Hans"]
-ISO_2_lst = ["en", "id",
+ISO_2_lst = ["id",
              "ta",
              "zh"]
 
@@ -95,6 +95,8 @@ def lm_eval_wrapper(model, tokenizer, device: str):
     trust_remote_code = True,
     device = device,
     dtype = torch.float16,
+    gptqmodel=True,
+    batch_size=batch_size,
 )
 
 def eval_model(model, device='cpu'):
@@ -106,10 +108,10 @@ def eval_model(model, device='cpu'):
       device=device,
       num_fewshot=num_shot,
       apply_chat_template = apply_chat_template,
-      gen_kwargs={'temperature': 0},
+      # gen_kwargs={'temperature': 0},
       predict_only=False,
       log_samples=True,
-      batch_size=1,
+      batch_size=batch_size,
       random_seed=1234,
   )
 
@@ -134,13 +136,13 @@ for bit in bit_lst:
 
         """# GPTQ"""
 
-        model = GPTQModel.load(model_path_gptq.format(bit=bit, lang=lang))
+        model = GPTQModel.load(model_path_gptq.format(bit=bit, lang=lang), device_map='auto', device=device)
         # res = model.generate("Who are you?")[0]
         # model.tokenizer.decode(res)
 
-        model = lm_eval_wrapper(model, model.tokenizer, device)
+        model = lm_eval_wrapper(model, model.tokenizer, device_str)
 
-        result_gptq = eval_model(model, device)
+        result_gptq = eval_model(model, device_str)
 
         with open(result_path_gptq.format(bit=bit, lang=lang), 'wb') as file:
             pickle.dump(result_gptq, file)
@@ -229,7 +231,11 @@ for bit in bit_lst:
                 run.summary[f"{task_name}_acc_{lang_eval}"] = accuracy
 
             # Log Result
-            columns = ["Eval Dataset", "Result"]
-            data = [["xnli", pprint.pformat(result_gptq)]]
-            table = wandb.Table(data=data, columns=columns)
-            run.log({"result": table})
+            # columns = ["Eval Dataset", "Result"]
+            # data = [["xnli", pprint.pformat(result_gptq)]]
+            # table = wandb.Table(data=data, columns=columns)
+            # run.log({"result": table})
+
+            artifact = wandb.Artifact(name=f"{wandb_runname}-result", type="eval-result")
+            artifact.add_file(local_path=f"./{result_path_gptq}", name=f"{evaluation_dataset}-result.json")
+            artifact.save()

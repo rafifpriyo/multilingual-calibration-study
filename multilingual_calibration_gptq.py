@@ -23,6 +23,13 @@ from transformers import AutoTokenizer
 from huggingface_hub import create_repo
 from huggingface_hub import HfApi
 
+# Argument
+import argparse
+
+parser = argparse.ArgumentParser("args_gptq")
+parser.add_argument("--lang", type=str)
+parser.add_argument("--bit", type=int)
+
 """# Parameter"""
 
 load_dotenv()
@@ -51,15 +58,20 @@ model_id = "google/gemma-3-1b-pt"
 #              "qu", "sw", "ta", "th",
 #              "tr", "vi", "zh"]
 
-lang_lst = ["English", "Indonesian",
+lang_lst = ["Indonesian",
              "Tamil",
              "Chinese"]
-ISO_3_lst = ["eng_Latn", "ind_Latn",
+ISO_3_lst = ["ind_Latn",
              "tam_Taml",
              "wuu_Hans"]
-ISO_2_lst = ["en", "id",
+ISO_2_lst = ["id",
              "ta",
              "zh"]
+
+args = parser.parse_args()
+lang = args.lang
+bit = args.bit
+ISO_3 = ISO_3_lst[lang_lst.index(lang)]
 
 dataset_split = "dev"
 
@@ -82,8 +94,10 @@ output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_techn
 
 """# Looping"""
 
-for bit in bit_lst:
-    for lang, ISO_3 in zip(lang_lst, ISO_3_lst):
+#for bit in bit_lst:
+for i in range(1):
+    for j in range(1):
+    #for lang, ISO_3 in zip(lang_lst, ISO_3_lst):
         """## Calibration data
 
         > https://huggingface.co/datasets/cambridgeltl/xcopa
@@ -107,7 +121,8 @@ for bit in bit_lst:
 
         # Preprocess the data into the format the model is trained with.
         def preprocess(example):
-            return {"text": tokenizer.apply_chat_template(chat_template(example["text"]), tokenize=False,)}
+            # return {"text": tokenizer.apply_chat_template(chat_template(example["text"]), tokenize=False,)}
+            return {"text": example["text"]}
         ds = ds.map(preprocess)
 
         """## GPTQ"""
