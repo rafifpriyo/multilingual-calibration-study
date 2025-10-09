@@ -41,20 +41,22 @@ batch_size = 4
 bit_lst = [4, 8]
 
 # Model
-model_id = "google/gemma-3-1b-pt"
+model_id = "Qwen/Qwen3-1.7B"
 
 # Evaluation
 evaluation_dataset = "xnli"
 num_shot = 3
-apply_chat_template = False
+apply_chat_template = True
+enable_thinking = False
+chat_template_args = {"enable_thinking": False}
 
 # Quantization Config
 quantization_technique = "gptq"
-granularity = "group",
-group_size = 128,
-num_calibration_samples = 512,
-max_sequence_length = 2048,
-symmetry = False,
+granularity = "group"
+group_size = 128
+num_calibration_samples = 512
+max_sequence_length = 2048
+symmetry = False
 
 # Calibration Dataset
 # lang_lst = ["Estonian", "Haitian", "Indonesian", "Italian",
@@ -67,14 +69,20 @@ symmetry = False,
 #              "qu", "sw", "ta", "th",
 #              "tr", "vi", "zh"]
 
-lang_lst = ["Indonesian",
+lang_lst = ["English",
+            "Indonesian",
              "Tamil",
+             "Swahili",
              "Chinese"]
-ISO_3_lst = ["ind_Latn",
+ISO_3_lst = ["eng_Latn",
+             "ind_Latn",
              "tam_Taml",
+             "swh_Latn",
              "wuu_Hans"]
-ISO_2_lst = ["id",
+ISO_2_lst = ["en",
+             "id",
              "ta",
+             "sw",
              "zh"]
 
 model_path_gptq = f"./{model_id.split("/")[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
@@ -97,6 +105,7 @@ def lm_eval_wrapper(model, tokenizer, device: str):
     dtype = torch.float16,
     gptqmodel=True,
     batch_size=batch_size,
+    chat_template_args=chat_template_args,
 )
 
 def eval_model(model, device='cpu'):
@@ -132,6 +141,7 @@ for bit in bit_lst:
             'evaluation_dataset': evaluation_dataset,
             'num_shot': num_shot,
             'apply_chat_template': apply_chat_template,
+            'enable_thinking': enable_thinking,
         }
 
         """# GPTQ"""

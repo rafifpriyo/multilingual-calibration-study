@@ -66,12 +66,14 @@ device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
 batch_size = 4
 
 # Model
-model_id = "google/gemma-3-1b-pt"
+model_id = "Qwen/Qwen3-1.7B"
 
 # Evaluation
 evaluation_dataset = "xnli"
 num_shot = 3
-apply_chat_template = False
+apply_chat_template = True
+enable_thinking = False
+chat_template_args = {"enable_thinking": False}
 
 # Quantization Config
 quantization_technique = "slimllm"
@@ -84,7 +86,7 @@ symmetry = False
 model_path_slimllm = f"./slim-llm/output/{model_id.replace("/", "_")}_flores_{lang}_{bit}bit_{group_size}"
 output_result_slimllm = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}.json"
 
-output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}_{bit}bit_{lang}"
+output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}-{bit}bit-calibration-{lang}"
 wandb_config = {
     'base_model': model_id,
     'quantization_technique': quantization_technique,
@@ -99,6 +101,7 @@ wandb_config = {
     'evaluation_dataset': evaluation_dataset,
     'num_shot': num_shot,
     'apply_chat_template': apply_chat_template,
+    'enable_thinking': enable_thinking,
 }
 wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}"
 
@@ -113,6 +116,7 @@ def lm_eval_wrapper(model, tokenizer, device: str):
     device = device,
     dtype = torch.float16,
     batch_size=batch_size,
+    chat_template_args=chat_template_args,
 )
 
 def eval_model(model, device='cpu'):
@@ -139,8 +143,8 @@ start_time = time.time()
 # Load model directly
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-tokenizer = AutoTokenizer.from_pretrained("google/gemma-3-1b-pt")
-model = AutoModelForCausalLM.from_pretrained(model_path_slimllm, device_map=device, device=device)
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForCausalLM.from_pretrained(model_path_slimllm, device_map=device)
 
 model = lm_eval_wrapper(model, tokenizer, device_str)
 

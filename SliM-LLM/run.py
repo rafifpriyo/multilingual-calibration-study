@@ -43,8 +43,8 @@ login(token=hf_key)
 quantization_technique = "slimllm"
 
 # huggingface
-model_id = "google/gemma-3-1b-pt"
-output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}_{{bit}}_{{lang}}"
+model_id = "Qwen/Qwen3-1.7B"
+output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}-{{bit}}-calibration-{{lang}}"
 
 
 # Slim-LLM

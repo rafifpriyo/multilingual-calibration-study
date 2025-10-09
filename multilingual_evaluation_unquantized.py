@@ -27,14 +27,6 @@ from pytablewriter import LatexTableWriter, MarkdownTableWriter
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-# Argument
-import argparse
-
-parser = argparse.ArgumentParser("args_gptq")
-parser.add_argument("--bit", type=int)
-args = parser.parse_args()
-bit = args.bit
-
 """# Parameter"""
 
 load_dotenv()
@@ -56,11 +48,11 @@ PROJECT = "calibration-on-quantized-multilingual"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
 batch_size = 4
-bit_lst = [4, 8]
+bit = 32
 
 # Model
 model_id = "Qwen/Qwen3-1.7B"
-lang = "Uncalibrated"
+lang = "Unquantized"
 
 # Evaluation
 evaluation_dataset = "xnli"
@@ -70,9 +62,9 @@ enable_thinking = False
 chat_template_args = {"enable_thinking": False}
 
 # Quantization Config
-quantization_technique = "bnb"
-calibration_language = "Uncalibrated"
-granularity = "vector"
+quantization_technique = "Unquantized"
+calibration_language = "Unquantized"
+granularity = None
 group_size = None
 num_calibration_samples = None
 max_sequence_length = None
@@ -113,7 +105,7 @@ def lm_eval_wrapper(model, tokenizer, device: str):
     device = device,
     dtype = torch.float16,
     batch_size=batch_size,
-    chat_template_args=chat_template_args,
+    chat_template_args = chat_template_args,
 )
 
 def eval_model(model, device='cpu'):
@@ -147,14 +139,8 @@ import time
 print(f"Start Evaluating")
 start_time = time.time()
 
-if bit == 4:
-    cfg = BitsAndBytesConfig(load_in_8bit=True, bnb_8bit_compute_dtype=torch.bfloat16, token=hf_key)
-    tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
-elif bit == 8:
-    cfg = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.bfloat16, token=hf_key)
-    tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
-
-model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=cfg, device_map=device, token=hf_key)
+tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
+model = AutoModelForCausalLM.from_pretrained(model_id device_map=device, token=hf_key)
 
 model = lm_eval_wrapper(model, tokenizer, device=device_str)
 

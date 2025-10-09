@@ -45,7 +45,7 @@ wandb_key = os.environ["WANDB_KEY"]
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Model
-model_id = "google/gemma-3-1b-pt"
+model_id = "Qwen/Qwen3-1.7B"
 
 # Calibration Dataset
 # lang_lst = ["Estonian", "Haitian", "Indonesian", "Italian",
@@ -58,14 +58,20 @@ model_id = "google/gemma-3-1b-pt"
 #              "qu", "sw", "ta", "th",
 #              "tr", "vi", "zh"]
 
-lang_lst = ["Indonesian",
+lang_lst = ["English",
+            "Indonesian",
              "Tamil",
+             "Swahili",
              "Chinese"]
-ISO_3_lst = ["ind_Latn",
+ISO_3_lst = ["eng_Latn",
+             "ind_Latn",
              "tam_Taml",
+             "swh_Latn",
              "wuu_Hans"]
-ISO_2_lst = ["id",
+ISO_2_lst = ["en",
+             "id",
              "ta",
+             "sw",
              "zh"]
 
 args = parser.parse_args()
@@ -90,7 +96,7 @@ NUM_CALIBRATION_SAMPLES=512
 MAX_SEQUENCE_LENGTH=2048
 
 # huggingface
-output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}_{{bit}}bit_{{lang}}"
+output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}"
 
 """# Looping"""
 
@@ -121,8 +127,8 @@ for i in range(1):
 
         # Preprocess the data into the format the model is trained with.
         def preprocess(example):
-            # return {"text": tokenizer.apply_chat_template(chat_template(example["text"]), tokenize=False,)}
-            return {"text": example["text"]}
+            return {"text": tokenizer.apply_chat_template(chat_template(example["text"]), tokenize=False,)}
+            # return {"text": example["text"]}
         ds = ds.map(preprocess)
 
         """## GPTQ"""
