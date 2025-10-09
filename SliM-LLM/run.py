@@ -44,7 +44,7 @@ quantization_technique = "slimllm"
 
 # huggingface
 model_id = "google/gemma-3-1b-pt"
-output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}_{{bit}}bit_{{lang}}"
+output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}_{{bit}}_{{lang}}"
 
 
 # Slim-LLM
@@ -520,7 +520,7 @@ if __name__ == "__main__":
     api = HfApi(token=hf_key)
 
     api.upload_folder(
-        folder_path=os.path.dirname(save_file),
+        folder_path=save_file,
         repo_id=output_huggingface_gptq.format(bit=args.low_quant_method, lang=args.dataset_subset),
         repo_type="model",
     )
