@@ -76,6 +76,11 @@ def get_model(model):
 
         model = AutoModelForCausalLM.from_pretrained(model, torch_dtype="auto")
         model.seqlen = 2048
+    elif "Qwen" in model:
+        from transformers import AutoModelForCausalLM
+
+        model = AutoModelForCausalLM.from_pretrained(model, torch_dtype="auto")
+        model.seqlen = 2048
     return model
 
 
@@ -118,13 +123,18 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
         model.model.norm = model.model.norm.to(dev)
         model.model.rotary_emb = model.model.rotary_emb.to(dev)
         model.model.rotary_emb_local = model.model.rotary_emb_local.to(dev)
+    elif "Qwen" in args.model:
+        layers = model.model.layers
+        model.model.embed_tokens = model.model.embed_tokens.to(dev)
+        model.model.norm = model.model.norm.to(dev)
+        model.model.rotary_emb = model.model.rotary_emb.to(dev)
     layers[0] = layers[0].to(dev)
 
     dtype = next(iter(model.parameters())).dtype
     inps = torch.zeros(
         (args.nsamples, model.seqlen, model.config.hidden_size), dtype=dtype, device=dev
     )
-    cache = {"i": 0, "attention_mask": None, "position_embeddings_global": None, "position_embeddings_local": None}
+    cache = {"i": 0, "attention_mask": None, "position_embeddings_global": None, "position_embeddings_local": None, "position_embeddings": None}
 
     class Catcher(nn.Module):
         def __init__(self, module):
@@ -139,6 +149,8 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
             if "gemma" in args.model:
                 cache["position_embeddings_global"] = kwargs["position_embeddings_global"]
                 cache["position_embeddings_local"] = kwargs["position_embeddings_local"]
+            elif "Qwen" in args.model:
+                cache["position_embeddings"] = kwargs["position_embeddings"]
             raise ValueError
 
     layers[0] = Catcher(layers[0])
@@ -171,12 +183,17 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
         model.model.norm = model.model.norm.cpu()
         model.model.rotary_emb = model.model.rotary_emb.cpu()
         model.model.rotary_emb_local = model.model.rotary_emb_local.cpu()
+    elif "Qwen" in args.model:
+        model.model.embed_tokens = model.model.embed_tokens.cpu()
+        model.model.norm = model.model.norm.cpu()
+        model.model.rotary_emb = model.model.rotary_emb.cpu()
     torch.cuda.empty_cache()
 
     outs = torch.zeros_like(inps)
     attention_mask = cache["attention_mask"]
     position_embeddings_global = cache["position_embeddings_global"]
     position_embeddings_local = cache["position_embeddings_local"]
+    position_embeddings = cache["position_embeddings"]
 
     print("Ready.")
     index = 0
@@ -223,6 +240,8 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
         for j in range(args.nsamples):
             if "gemma" in args.model:
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings_global=position_embeddings_global, position_embeddings_local=position_embeddings_local)[0]
+            elif "Qwen" in args.model:
+                outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings=position_embeddings)[0]
             else:
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
         for h in handles:
@@ -243,6 +262,8 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
             for j in tqdm.tqdm(range(args.nsamples), desc="Determining block precision..."):
                 if "gemma" in args.model:
                     outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings_global=position_embeddings_global, position_embeddings_local=position_embeddings_local)[0]
+                elif "Qwen" in args.model:
+                    outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings=position_embeddings)[0]
                 else:
                     outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
             for h in handles:
@@ -269,6 +290,8 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
         for j in range(args.nsamples):
             if "gemma" in args.model:
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings_global=position_embeddings_global, position_embeddings_local=position_embeddings_local)[0]
+            elif "Qwen" in args.model:
+                outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings=position_embeddings)[0]
             else:
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
 
@@ -317,6 +340,10 @@ def pack_model(model, save_path, bits, group_size, quantizers, block_bits):
         model = GemmaGPTQForCausalLM(model, quantized=False, quantize_config=quantize_config)
         model.quantize([], scales, zeros, g_idxes, modified_block_bits)
         model.save_quantized(save_path, use_safetensors=False)
+    elif "Qwen" in args.model:
+        model = Qwen2GPTQForCausalLM(model, quantized=False, quantize_config=quantize_config)
+        model.quantize([], scales, zeros, g_idxes, modified_block_bits)
+        model.save_quantized(save_path, use_safetensors=False)
 
 if __name__ == "__main__":
     import argparse
@@ -348,8 +375,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dataset_subset",
         type=str,
-        choices=["Indonesian",
+        choices=["English",
+            "Indonesian",
              "Tamil",
+             "Swahili",
              "Chinese",
              None],
         default=None,
@@ -456,8 +485,10 @@ if __name__ == "__main__":
     
     def map_language_to_iso3(lang=args.dataset_subset):
         lang_mapper = {
+            "English": "eng_Latn",
             "Indonesian": "ind_Latn",
             "Tamil": "tam_Taml",
+            "Swahili": "swh_Latn",
             "Chinese": "wuu_Hans",
             None: None
         }
