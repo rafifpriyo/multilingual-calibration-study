@@ -259,6 +259,6 @@ for i in range(1):
             # table = wandb.Table(data=data, columns=columns)
             # run.log({"result": table})
 
-            artifact = wandb.Artifact(name=f"{wandb_runname}-result", type="eval-result")
-            artifact.add_file(local_path=f"./{result_path_gptq}", name=f"{evaluation_dataset}-result.json")
+            artifact = wandb.Artifact(name=f"{wandb_runname.format(bit=bit, lang=lang)}-result", type="eval-result")
+            artifact.add_file(local_path=f"./{result_path_gptq.format(bit=bit, lang=lang)}", name=f"{evaluation_dataset}-result.json")
             artifact.save()

@@ -140,7 +140,7 @@ print(f"Start Evaluating")
 start_time = time.time()
 
 tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
-model = AutoModelForCausalLM.from_pretrained(model_id device_map=device, token=hf_key)
+model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device, token=hf_key)
 
 model = lm_eval_wrapper(model, tokenizer, device=device_str)
 

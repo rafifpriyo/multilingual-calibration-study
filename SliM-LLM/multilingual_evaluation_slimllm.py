@@ -151,9 +151,9 @@ model = lm_eval_wrapper(model, tokenizer, device_str)
 
 result = eval_model(model, device_str)
 
-import json
+import pickle
 with open(output_result_slimllm, 'wb') as file:
-    json.dump(result, file)
+    pickle.dump(result, file)
 
 print(result)
 

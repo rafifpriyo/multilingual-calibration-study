@@ -8,6 +8,10 @@ cp ./__init__.py ./AutoGPTQ/auto_gptq
 cd slim-llm
 
 pixi run python run.py \
+ "google/gemma-3-1b-pt" flores 4bit --dataset_subset English --groupsize 128 \
+--device "cuda" --save --seed 1234 --nsamples 512
+
+pixi run python run.py \
  "google/gemma-3-1b-pt" flores 4bit --dataset_subset Indonesian --groupsize 128 \
 --device "cuda" --save --seed 1234 --nsamples 512
 
@@ -16,7 +20,15 @@ pixi run python run.py \
 --device "cuda" --save --seed 1234 --nsamples 512
 
 pixi run python run.py \
+ "google/gemma-3-1b-pt" flores 4bit --dataset_subset Swahili --groupsize 128 \
+--device "cuda" --save --seed 1234 --nsamples 512
+
+pixi run python run.py \
  "google/gemma-3-1b-pt" flores 4bit --dataset_subset Chinese --groupsize 128 \
+--device "cuda" --save --seed 1234 --nsamples 512
+
+pixi run python run.py \
+ "google/gemma-3-1b-pt" flores 8bit --dataset_subset English --groupsize 128 \
 --device "cuda" --save --seed 1234 --nsamples 512
 
 pixi run python run.py \
@@ -25,6 +37,10 @@ pixi run python run.py \
 
 pixi run python run.py \
  "google/gemma-3-1b-pt" flores 8bit --dataset_subset Tamil --groupsize 128 \
+--device "cuda" --save --seed 1234 --nsamples 512
+
+pixi run python run.py \
+ "google/gemma-3-1b-pt" flores 8bit --dataset_subset Swahili --groupsize 128 \
 --device "cuda" --save --seed 1234 --nsamples 512
 
 pixi run python run.py \
