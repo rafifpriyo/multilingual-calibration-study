@@ -78,6 +78,7 @@ args = parser.parse_args()
 lang = args.lang
 bit = args.bit
 ISO_3 = ISO_3_lst[lang_lst.index(lang)]
+print(f"lang {lang} bit {bit}")
 
 dataset_split = "dev"
 
@@ -87,7 +88,7 @@ dataset_id = "openlanguagedata/flores_plus"
 quantization_technique = "gptq"
 bit_lst = [4, 8]
 
-output_path_gptq = f"./{model_id.split("/")[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
+output_path_gptq = f"./{model_id.split('/')[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
 
 ## Calibration size
 SYMMETRY = False
@@ -96,7 +97,7 @@ NUM_CALIBRATION_SAMPLES=512
 MAX_SEQUENCE_LENGTH=2048
 
 # huggingface
-output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}"
+output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}"
 
 """# Looping"""
 
@@ -137,7 +138,7 @@ for i in range(1):
         model = GPTQModel.load(model_id, quant_config, token=hf_key)
 
         model.quantize(ds['text'][:NUM_CALIBRATION_SAMPLES], batch_size=1)
-        model.save(output_path_gptq.format(lang=lang))
+        model.save(output_path_gptq.format(bit=bit, lang=lang))
 
         """# Upload to Huggingface"""
 

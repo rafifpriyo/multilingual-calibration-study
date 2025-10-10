@@ -35,6 +35,17 @@ if "WANDB_KEY" not in os.environ:
 hf_key = os.environ["HF_KEY"]
 wandb_key = os.environ["WANDB_KEY"]
 
+# Argument
+import argparse
+
+parser = argparse.ArgumentParser("args_gptq")
+parser.add_argument("--lang", type=str)
+parser.add_argument("--bit", type=int)
+args = parser.parse_args()
+lang = args.lang
+bit = args.bit
+print(f"lang {lang} bit {bit}")
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
 batch_size = 4
@@ -85,13 +96,13 @@ ISO_2_lst = ["en",
              "sw",
              "zh"]
 
-model_path_gptq = f"./{model_id.split("/")[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
+model_path_gptq = f"./{model_id.split('/')[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
 result_path_gptq = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{{bit}}bit_{{lang}}.json"
 
 # WandB Logging
-output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}"
+output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}"
 
-wandb_runname = f"{model_id.split("/")[-1]}-{quantization_technique}-{{bit}}bit-{{lang}}-{evaluation_dataset}"
+wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-{{lang}}-{evaluation_dataset}"
 
 """# Function"""
 
@@ -125,8 +136,10 @@ def eval_model(model, device='cpu'):
   )
 
 """# Looping"""
-for bit in bit_lst:
-    for lang in lang_lst:
+# for bit in bit_lst:
+for i in range(1):
+    for j in range(1):
+    # for lang in lang_lst:
         wandb_config = {
             'base_model': model_id,
             'quantization_technique': quantization_technique,

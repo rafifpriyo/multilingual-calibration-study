@@ -70,7 +70,7 @@ num_calibration_samples = None
 max_sequence_length = None
 symmetry = False
 
-output_path_bnb = f"./{model_id.split("/")[-1]}_{quantization_technique}_{bit}bit_{lang}"
+output_path_bnb = f"./{model_id.split('/')[-1]}_{quantization_technique}_{bit}bit_{lang}"
 output_result_bnb = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}.json"
 
 # WandB Logging

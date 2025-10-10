@@ -37,6 +37,7 @@ parser.add_argument("--bit", type=int)
 args = parser.parse_args()
 lang = args.lang
 bit = args.bit
+print(f"lang {lang} bit {bit}")
 
 # Login
 
@@ -83,10 +84,10 @@ num_calibration_samples = 512
 max_sequence_length = 2048
 symmetry = False
 
-model_path_slimllm = f"./slim-llm/output/{model_id.replace("/", "_")}_flores_{lang}_{bit}bit_{group_size}"
+model_path_slimllm = f"./slim-llm/output/{model_id.replace('/', '_')}_flores_{lang}_{bit}bit_{group_size}"
 output_result_slimllm = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}.json"
 
-output_huggingface_gptq = f"fifrio/{model_id.split("/")[-1]}-{quantization_technique}-{bit}bit-calibration-{lang}"
+output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-calibration-{lang}"
 wandb_config = {
     'base_model': model_id,
     'quantization_technique': quantization_technique,
