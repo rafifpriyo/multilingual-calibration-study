@@ -105,7 +105,7 @@ def get_c4(nsamples, seed, seqlen, model, tokenizer):
 def get_flores(nsamples, seed, seqlen, model, tokenizer, subset=None):
     
     traindata = load_dataset("openlanguagedata/flores_plus", subset, split='dev')
-    testdata = load_dataset("openlanguagedata/flores_plus", subset, split='devtest')
+    testdata = load_dataset("openlanguagedata/flores_plus", subset, split='dev')
 
     trainenc = tokenizer(" ".join(traindata['text']), return_tensors='pt')
     testenc = tokenizer("\n\n".join(testdata['text']), return_tensors='pt')

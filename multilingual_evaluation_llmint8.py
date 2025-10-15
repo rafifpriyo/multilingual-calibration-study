@@ -68,7 +68,6 @@ evaluation_dataset = "xnli"
 num_shot = 3
 apply_chat_template = True
 enable_thinking = False
-chat_template_args = {"enable_thinking": False}
 
 # Quantization Config
 quantization_technique = "bnb"
@@ -114,7 +113,7 @@ def lm_eval_wrapper(model, tokenizer, device: str):
     device = device,
     dtype = torch.float16,
     batch_size=batch_size,
-    chat_template_args=chat_template_args,
+    enable_thinking=enable_thinking,
 )
 
 def eval_model(model, device='cpu'):

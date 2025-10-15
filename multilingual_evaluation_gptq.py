@@ -11,7 +11,8 @@ import os
 from dotenv import load_dotenv
 
 import torch
-from lm_eval.models.huggingface import HFLM
+# from lm_eval.models.huggingface import HFLM
+from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
 
 import numpy as np
@@ -34,6 +35,9 @@ if "WANDB_KEY" not in os.environ:
 
 hf_key = os.environ["HF_KEY"]
 wandb_key = os.environ["WANDB_KEY"]
+
+from huggingface_hub import login
+login(token=hf_key)
 
 # Argument
 import argparse
@@ -59,7 +63,6 @@ evaluation_dataset = "xnli"
 num_shot = 3
 apply_chat_template = True
 enable_thinking = False
-chat_template_args = {"enable_thinking": False}
 
 # Quantization Config
 quantization_technique = "gptq"
@@ -107,16 +110,16 @@ wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-
 """# Function"""
 
 def lm_eval_wrapper(model, tokenizer, device: str):
-  return HFLM(
+#   return HFLM(
+  return VLLM(
     pretrained = model,
-    backend = "causal",
     tokenizer = tokenizer,
     trust_remote_code = True,
     device = device,
-    dtype = torch.float16,
-    gptqmodel=True,
+    dtype = "float16",
+    # gptqmodel=True,
     batch_size=batch_size,
-    chat_template_args=chat_template_args,
+    enable_thinking=enable_thinking,
 )
 
 def eval_model(model, device='cpu'):

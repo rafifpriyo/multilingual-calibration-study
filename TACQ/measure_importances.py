@@ -9,9 +9,18 @@ load_dotenv()
 # ML / Data
 import numpy as np
 import torch
-import huggingface_hub
-token = os.getenv('HUGGINGFACE_TOKEN')
-huggingface_hub.login(token=token)
+
+if "HF_KEY" not in os.environ:
+    raise EnvironmentError("HF_KEY environment variable is not defined. Please set it before running the application.")
+if "WANDB_KEY" not in os.environ:
+    raise EnvironmentError("WANDB_KEY environment variable is not defined. Please set it before running the application.")
+
+hf_key = os.environ["HF_KEY"]
+wandb_key = os.environ["WANDB_KEY"]
+
+from huggingface_hub import login
+login(token=hf_key)
+
 from utils.model_utils import load_model
 from utils.gradient_attributors import grad_attributor, sample_abs, weight_prod_contrastive_postprocess
 from utils.measurement_utils import filter_importances_dict, preprocess_calibration_datasets, save_accumulated_importances

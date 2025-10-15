@@ -12,7 +12,8 @@ import os
 from dotenv import load_dotenv
 
 import torch
-from lm_eval.models.huggingface import HFLM
+# from lm_eval.models.huggingface import HFLM
+from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
 
 import numpy as np
@@ -64,7 +65,7 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
-batch_size = 4
+batch_size = 8
 
 # Model
 model_id = "Qwen/Qwen3-1.7B"
@@ -74,7 +75,6 @@ evaluation_dataset = "xnli"
 num_shot = 3
 apply_chat_template = True
 enable_thinking = False
-chat_template_args = {"enable_thinking": False}
 
 # Quantization Config
 quantization_technique = "slimllm"
@@ -85,9 +85,9 @@ max_sequence_length = 2048
 symmetry = False
 
 model_path_slimllm = f"./slim-llm/output/{model_id.replace('/', '_')}_flores_{lang}_{bit}bit_{group_size}"
-output_result_slimllm = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}.json"
+output_result_slimllm = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}.pkl"
 
-output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-calibration-{lang}"
+output_huggingface_slimllm = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-calibration-{lang}"
 wandb_config = {
     'base_model': model_id,
     'quantization_technique': quantization_technique,
@@ -98,7 +98,7 @@ wandb_config = {
     'num_calibration_samples': num_calibration_samples,
     'max_sequence_length': max_sequence_length,
     'symmetry': symmetry,
-    'output_huggingface': output_huggingface_gptq,
+    'output_huggingface': output_huggingface_slimllm,
     'evaluation_dataset': evaluation_dataset,
     'num_shot': num_shot,
     'apply_chat_template': apply_chat_template,
@@ -108,16 +108,16 @@ wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{l
 
 """# Function"""
 
-def lm_eval_wrapper(model, tokenizer, device: str):
-  return HFLM(
+def lm_eval_vllm(model, tokenizer, device: str):
+#   return HFLM(
+  return VLLM(
     pretrained = model,
-    backend = "causal",
     tokenizer = tokenizer,
     trust_remote_code = True,
     device = device,
-    dtype = torch.float16,
+    dtype = "float16",
     batch_size=batch_size,
-    chat_template_args=chat_template_args,
+    enable_thinking=enable_thinking,
 )
 
 def eval_model(model, device='cpu'):
@@ -144,10 +144,10 @@ start_time = time.time()
 # Load model directly
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-model = AutoModelForCausalLM.from_pretrained(model_path_slimllm, device_map=device)
+# tokenizer = AutoTokenizer.from_pretrained(model_id)
+# model = AutoModelForCausalLM.from_pretrained(model_path_slimllm, device_map=device)
 
-model = lm_eval_wrapper(model, tokenizer, device_str)
+model = lm_eval_vllm(output_huggingface_slimllm, model_id, device_str)
 
 result = eval_model(model, device_str)
 

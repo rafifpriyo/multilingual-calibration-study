@@ -15,8 +15,17 @@ from utils.quantization_utils import cross_tensor_sum, importances_to_mask_top_p
 from utils.model_utils import load_model
 # Setup
 load_dotenv()
-token = os.getenv('HUGGINGFACE_TOKEN')
-huggingface_hub.login(token=token)
+
+if "HF_KEY" not in os.environ:
+    raise EnvironmentError("HF_KEY environment variable is not defined. Please set it before running the application.")
+if "WANDB_KEY" not in os.environ:
+    raise EnvironmentError("WANDB_KEY environment variable is not defined. Please set it before running the application.")
+
+hf_key = os.environ["HF_KEY"]
+wandb_key = os.environ["WANDB_KEY"]
+
+from huggingface_hub import login
+login(token=hf_key)
 
 def main(args):
     # Save args and load importances

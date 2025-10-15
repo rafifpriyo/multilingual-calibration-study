@@ -304,17 +304,17 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
     # print("The average bit-width is:  ", sum(mean_bit_width) / len(mean_bit_width), " bits")
     if saved_block_precision is None:
         net = args.model.split("/")[-1]
-        save_path = os.path.join(f'./block_precision_{args.groupsize}_{args.low_quant_method}/',f'{net}.pt')
+        save_path = os.path.join(f'./block_precision_{args.groupsize}_{args.low_quant_method}_{args.dataset_subset}/',f'{net}.pt')
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         torch.save(mixed_block_precision, save_path)
     model.config.use_cache = use_cache
-    return quantizers
+    return quantizers, mixed_block_precision
 
 def pack_model(model, save_path, bits, group_size, quantizers, block_bits):
     import sys, os
     sys.path.append(os.path.join(os.getcwd(), '../AutoGPTQ'))
     # print(sys.path)
-    from auto_gptq import LlamaGPTQForCausalLM, OPTGPTQForCausalLM, GemmaGPTQForCausalLM, BaseQuantizeConfig
+    from auto_gptq import LlamaGPTQForCausalLM, OPTGPTQForCausalLM, GemmaGPTQForCausalLM, Qwen2GPTQForCausalLM, BaseQuantizeConfig
     quantize_config = BaseQuantizeConfig(
         bits=bits,  # quantize model to 3-bit
         group_size=group_size,  # it is recommended to set the value to 128
@@ -474,9 +474,9 @@ if __name__ == "__main__":
     # if the block precision does not exist, start Salience-Determined Bit Allocation
     groupsize = args.groupsize
     net = args.model.split("/")[-1]
-    block_configurations = f'../block_precision_{args.groupsize}_{args.low_quant_method}/{net}.pt'
+    block_configurations = f'./block_precision_{args.groupsize}_{args.low_quant_method}_{args.dataset_subset}/{net}.pt'
     if args.dataset_subset:
-        block_configurations = f'../block_precision_{args.groupsize}_{args.low_quant_method}_{args.dataset_subset}/{net}.pt'
+        block_configurations = f'./block_precision_{args.groupsize}_{args.low_quant_method}_{args.dataset_subset}/{net}.pt'
     if os.path.exists(block_configurations):
         block_precision = torch.load(block_configurations)
     else:
@@ -512,7 +512,10 @@ if __name__ == "__main__":
             model=args.model,
             seqlen=model.seqlen,
         )
-        quantizers = quant_sequential(model, dataloader, device, block_precision)
+        quantizers, holder_block_precision = quant_sequential(model, dataloader, device, block_precision)
+        if block_precision is None:
+            block_precision = holder_block_precision
+        del holder_block_precision
         print("quantization time:", time.time() - tick, "s")
 
     # for dataset in ["wikitext2", "ptb", "c4"]:
