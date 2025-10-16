@@ -51,13 +51,13 @@ def load_model(engine, checkpoints_dir, device_map = "cuda", full_32_precision=F
     print("Model loaded of type:", type(model))
     if not full_32_precision:
         if brainfloat:
-            model = model.to(torch.bfloat16)
+            model = model.bfloat16()
             print("Model activations converted to bf16 bit precision")
         else:
             model = model.half()
             print("Model activations converted to fp16 bit precision")
     else:
-        model = model.to(torch.float32)
+        model = model.float()
         print("Model activations converted to fp32 bit precision")
     unique_dtypes = set()
     for name, param in model.named_parameters():
