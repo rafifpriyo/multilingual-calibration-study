@@ -15,11 +15,11 @@ fsspec = "==2025.3.0"
 python-dotenv = "==1.1.1"
 pandas = "<=2.2.2"
 optimum = "==1.27.0"
-transformers = "==4.53.0"
+transformers = "==4.55.2"
 huggingface_hub = "==0.35.0"
-datasets = "==4.0.0"
+datasets = "==3.6.0"
 protobuf = "==5.29.3"
-lm-eval = "<=0.4.9.1"
+lm-eval = ">=0.4.9.1"
 pytablewriter = "<=1.2.1"
 wandb = "<=0.22.1"
 
@@ -54,6 +54,8 @@ certifi = ">=2017.4.17"
 device-smi = "==0.4.1"
 gptqmodel = "==4.2.0"
 
+vllm = ">=0.11.0"
+
 [pypi-options]
 no-build-isolation = ["gptqmodel"]
 
@@ -66,12 +68,10 @@ dependency-overrides = { numpy = "==1.26.4" }
 [feature.gpu.pypi-dependencies]
 torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cu128"}
 torchvision = { version = ">=0.22.0", index = "https://download.pytorch.org/whl/cu128" }
-vllm = { version = ">=0.11.0", index = "https://download.pytorch.org/whl/cu128" }
 
 [feature.cpu.pypi-dependencies]
 torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cpu"}
 torchvision = { version = ">=0.22.0", index = "https://download.pytorch.org/whl/cpu" }
-vllm = { version = ">=0.11.0", index = "https://download.pytorch.org/whl/cpu" }
 
 [feature.cpu.pypi-options]
 dependency-overrides = { numpy = "==1.26.4" }
