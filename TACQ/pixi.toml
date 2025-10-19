@@ -15,7 +15,7 @@ fsspec = "==2025.3.0"
 python-dotenv = "==1.1.1"
 pandas = "<=2.2.2"
 optimum = "==1.27.0"
-transformers = "==4.55.2"
+transformers = "==4.52.0"
 huggingface_hub = "==0.35.0"
 datasets = "==3.6.0"
 protobuf = "==5.29.3"
@@ -188,8 +188,6 @@ websocket-client = "==1.8.0"
 widgetsnbextension = "==4.0.11"
 xmltodict = "==0.14.2"
 
-vllm = ">=0.11.0"
-
 [feature.gpu.system-requirements]
 cuda = "12.8"
 
@@ -197,7 +195,7 @@ cuda = "12.8"
 dependency-overrides = { numpy = "==1.26.4" }
 
 [feature.gpu.pypi-dependencies]
-torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cu128"}
+torch = { version = ">=2.8.0", index = "https://download.pytorch.org/whl/cu128"}
 torchvision = { version = ">=0.22.0", index = "https://download.pytorch.org/whl/cu128" }
 
 [feature.cpu.pypi-dependencies]

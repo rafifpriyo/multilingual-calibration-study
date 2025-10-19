@@ -19,7 +19,6 @@ import numpy as np
 import pickle
 import pprint
 
-from gptqmodel import GPTQModel
 import wandb
 
 from pytablewriter import LatexTableWriter, MarkdownTableWriter
@@ -65,7 +64,7 @@ apply_chat_template = True
 enable_thinking = True
 
 # Quantization Config
-quantization_technique = "gptq"
+quantization_technique = "tacq"
 granularity = "group"
 group_size = 128
 num_calibration_samples = 512
@@ -109,7 +108,7 @@ wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-
 
 """# Function"""
 
-def lm_eval_wrapper(model, tokenizer, device: str):
+def lm_eval_vllm(model, tokenizer, device: str):
 #   return HFLM(
   return VLLM(
     pretrained = model,
@@ -129,6 +128,7 @@ def eval_model(model, device='cpu'):
             # "xwinograd",
             #  "xstorycloze"],
       device=device,
+      limit=1,
       num_fewshot=num_shot,
       apply_chat_template = apply_chat_template,
       # gen_kwargs={'temperature': 0},
@@ -162,11 +162,7 @@ for i in range(1):
 
         """# GPTQ"""
 
-        model = GPTQModel.load(model_path_gptq.format(bit=bit, lang=lang), device_map='auto', device=device)
-        # res = model.generate("Who are you?")[0]
-        # model.tokenizer.decode(res)
-
-        model = lm_eval_wrapper(model, model.tokenizer, device_str)
+        model = lm_eval_vllm(output_huggingface_gptq, model_id, device_str)
 
         result_gptq = eval_model(model, device_str)
 

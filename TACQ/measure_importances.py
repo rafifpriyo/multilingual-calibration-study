@@ -89,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument("--eval_start_p", type=float, default=.75)
     parser.add_argument("--train_end_p", type=float, default=.75)
     parser.add_argument("--max_length", type=int, default=2048)
-    parser.add_argument("--n_calibration_points", type=int, default=128)
+    parser.add_argument("--n_calibration_points", type=int, default=512)
     parser.add_argument("--force_recompute", action="store_true")
     args = parser.parse_args()
     args.unsupervised = True

@@ -74,7 +74,7 @@ model_id = "Qwen/Qwen3-1.7B"
 evaluation_dataset = "xnli"
 num_shot = 3
 apply_chat_template = True
-enable_thinking = False
+enable_thinking = True
 
 # Quantization Config
 quantization_technique = "tacq"
@@ -85,7 +85,7 @@ max_sequence_length = 2048
 symmetry = False
 
 model_path_tacq = f"./output/{model_id.replace('/', '_')}_flores_{lang}_{bit}bit_{group_size}"
-output_result_tacq = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}.json"
+output_result_tacq = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}_think.pkl"
 
 output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-calibration-{lang}"
 wandb_config = {
@@ -104,7 +104,7 @@ wandb_config = {
     'apply_chat_template': apply_chat_template,
     'enable_thinking': enable_thinking,
 }
-wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}"
+wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-think"
 
 """# Function"""
 

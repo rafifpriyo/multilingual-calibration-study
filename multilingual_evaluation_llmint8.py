@@ -67,7 +67,7 @@ lang = "Uncalibrated"
 evaluation_dataset = "xnli"
 num_shot = 3
 apply_chat_template = True
-enable_thinking = False
+enable_thinking = True
 
 # Quantization Config
 quantization_technique = "bnb"
@@ -79,7 +79,7 @@ max_sequence_length = None
 symmetry = False
 
 output_path_bnb = f"./{model_id.split('/')[-1]}_{quantization_technique}_{bit}bit_{lang}"
-output_result_bnb = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}.json"
+output_result_bnb = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}_think.pkl"
 
 # WandB Logging
 # output_huggingface_gptq = f"fifrio/gemma-3-1b-pt-bnb-{bit}bit-calibration-{lang}"
@@ -100,7 +100,7 @@ wandb_config = {
     'apply_chat_template': apply_chat_template,
     'enable_thinking': enable_thinking,
 }
-wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}"
+wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-think"
 
 """# Function"""
 

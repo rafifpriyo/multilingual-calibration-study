@@ -370,7 +370,7 @@ if __name__ == '__main__':
         type=int, default=0, help='Seed for sampling the calibration data.'
     )
     parser.add_argument(
-        '--nsamples', type=int, default=128,
+        '--nsamples', type=int, default=512,
         help='Number of calibration data samples.'
     )
     parser.add_argument(
@@ -399,6 +399,10 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--save_in_16bits', type=str, default='',
+        help='Save quantized checkpoint under this name in 16bits'
+    )
+    parser.add_argument(
+        '--save_in_16bits_pretrained', type=str, default='',
         help='Save quantized checkpoint under this name in 16bits'
     )
     parser.add_argument(
@@ -512,3 +516,20 @@ if __name__ == '__main__':
             os.makedirs(os.path.dirname(args.save_in_16bits), exist_ok=True)
         torch.save(model.state_dict(), args.save_in_16bits)
         print("Saved in 16bits at:", args.save_in_16bits)
+
+    if args.save_in_16bits_pretrained:
+        def print_model_layer_dtype(model):
+            print('\nModel dtypes:')
+            for name, param in model.named_parameters():
+                print(f"Parameter: {name}, Data type: {param.dtype}")
+        # print_model_layer_dtype(model)
+        if args.save_in_dtype_float16:
+            model.half()
+        else:
+            model.to(torch.bfloat16)
+
+        if not os.path.exists(os.path.dirname(args.save_in_16bits_pretrained)):
+            os.makedirs(os.path.dirname(args.save_in_16bits_pretrained), exist_ok=True)
+        # torch.save(model.state_dict(), args.save_in_16bits)
+        model.save_pretrained(args.save_in_16bits_pretrained)
+        print("Saved in 16bits at:", args.save_in_16bits_pretrained)
