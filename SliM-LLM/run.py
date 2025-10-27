@@ -304,7 +304,9 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
     # print("The average bit-width is:  ", sum(mean_bit_width) / len(mean_bit_width), " bits")
     if saved_block_precision is None:
         net = args.model.split("/")[-1]
-        save_path = os.path.join(f'./block_precision_{args.groupsize}_{args.low_quant_method}_{args.dataset_subset}/',f'{net}.pt')
+        save_title = f"{args.model}_{args.dataset}_{args.dataset_subset}_{args.low_quant_method}_{groupsize}"
+        save_file = "./output/" + save_title.replace("/", "_")
+        save_path = os.path.join(f'{save_file}', f'block_configurations.pt')
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         torch.save(mixed_block_precision, save_path)
     model.config.use_cache = use_cache
@@ -474,9 +476,11 @@ if __name__ == "__main__":
     # if the block precision does not exist, start Salience-Determined Bit Allocation
     groupsize = args.groupsize
     net = args.model.split("/")[-1]
-    block_configurations = f'./block_precision_{args.groupsize}_{args.low_quant_method}_{args.dataset_subset}/{net}.pt'
-    if args.dataset_subset:
-        block_configurations = f'./block_precision_{args.groupsize}_{args.low_quant_method}_{args.dataset_subset}/{net}.pt'
+    save_title = f"{args.model}_{args.dataset}_{args.dataset_subset}_{args.low_quant_method}_{groupsize}"
+    save_file = "./output/" + save_title.replace("/", "_")
+
+    # block_configurations = f'./block_precision_{args.groupsize}_{args.low_quant_method}_{args.dataset_subset}/{net}.pt'
+    block_configurations = f'{save_file}/block_configurations.pt'
     if os.path.exists(block_configurations):
         block_precision = torch.load(block_configurations)
     else:
@@ -495,8 +499,8 @@ if __name__ == "__main__":
         return lang_mapper[lang]
 
     device = args.device
-    save_title = f"{args.model}_{args.dataset}_{args.dataset_subset}_{args.low_quant_method}_{groupsize}"
-    save_file = "./output/" + save_title.replace("/", "_")
+    # save_title = f"{args.model}_{args.dataset}_{args.dataset_subset}_{args.low_quant_method}_{groupsize}"
+    # save_file = "./output/" + save_title.replace("/", "_")
     if args.load_quantized:
         model = get_model(save_file)
         model.eval()
@@ -542,6 +546,9 @@ if __name__ == "__main__":
             pack_model(model, save_file, bits, groupsize, quantizers, block_precision)
         # save the fake quantized resulta with FP14 format
         else:
+            save_block_configurations = f"./output/{net}.pt"
+            if not os.path.exists(save_block_configurations):
+                block_precision
             save_path = os.path.dirname(save_file)
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
