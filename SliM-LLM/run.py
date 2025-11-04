@@ -345,7 +345,7 @@ def pack_model(model, save_path, bits, group_size, quantizers, block_bits):
     elif "Qwen" in args.model:
         model = Qwen2GPTQForCausalLM(model, quantized=False, quantize_config=quantize_config)
         model.quantize([], scales, zeros, g_idxes, modified_block_bits)
-        model.save_quantized(save_path, use_safetensors=False)
+        model.save_quantized(save_path, use_safetensors=True)
 
 if __name__ == "__main__":
     import argparse
@@ -542,13 +542,10 @@ if __name__ == "__main__":
     if args.save:
         # save the packed results with mixed-precision
         if args.pack:
-            bits = int(args.low_quant_method[0])
+            bits = int(args.low_quant_method)
             pack_model(model, save_file, bits, groupsize, quantizers, block_precision)
         # save the fake quantized resulta with FP14 format
         else:
-            save_block_configurations = f"./output/{net}.pt"
-            if not os.path.exists(save_block_configurations):
-                block_precision
             save_path = os.path.dirname(save_file)
             if not os.path.exists(save_path):
                 os.makedirs(save_path)

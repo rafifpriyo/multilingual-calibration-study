@@ -484,11 +484,16 @@ if __name__ == '__main__':
 
     if args.save:
         llama_pack3(model, quantizers)
-        torch.save(model.state_dict(), args.save)
+        # torch.save(model.state_dict(), args.save)
+        if not os.path.exists(os.path.dirname(args.save)):
+            os.makedirs(os.path.dirname(args.save), exist_ok=True)
+        # torch.save(model.state_dict(), args.save)
+        model.save_pretrained(args.save)
+        print("Saved at:", args.save)
 
-    if args.save:
-        # SPQR SAVING STRATEGY
-        torch.save(vars(args), args.save + "/args.pt")
+    # if args.save:
+    #     # SPQR SAVING STRATEGY
+    #     torch.save(vars(args), args.save + "/args.pt")
         # try:
         #     already_saved_weights = set()
         #     for name, layer in nn.ModuleList(model.model.layers).named_modules():

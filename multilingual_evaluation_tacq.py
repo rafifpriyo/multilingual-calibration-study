@@ -38,6 +38,12 @@ wandb_key = os.environ["WANDB_KEY"]
 from huggingface_hub import login
 login(token=hf_key)
 
+# WandB
+wandb.login(key=wandb_key)
+
+ENTITY = wandb.apis.PublicApi().default_entity
+PROJECT = "calibration-on-quantized-multilingual"
+
 # Argument
 import argparse
 
@@ -98,13 +104,13 @@ ISO_2_lst = ["en",
              "sw",
              "zh"]
 
-model_path_gptq = f"./{model_id.split('/')[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
-result_path_gptq = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{{bit}}bit_{{lang}}_think.pkl"
+model_path_gptq = f"./{model_id.split('/')[-1]}_{quantization_technique}_{bit}bit_{lang}"
+result_path_gptq = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}_{'think' if enable_thinking else 'nothink'}.pkl"
 
 # WandB Logging
-output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}"
+output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-calibration-{lang}"
 
-wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-{{lang}}-{evaluation_dataset}-think"
+wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}"
 
 """# Function"""
 
@@ -128,19 +134,18 @@ def eval_model(model, device='cpu'):
             # "xwinograd",
             #  "xstorycloze"],
       device=device,
-      limit=1,
       num_fewshot=num_shot,
       apply_chat_template = apply_chat_template,
       # gen_kwargs={'temperature': 0},
       predict_only=False,
-      log_samples=True,
+      log_samples=False,
       batch_size=batch_size,
       random_seed=1234,
   )
 
 """# Looping"""
 # for bit in bit_lst:
-for i in range(1):
+if __name__ == "__main__":
     for j in range(1):
     # for lang in lang_lst:
         wandb_config = {
@@ -153,7 +158,7 @@ for i in range(1):
             'num_calibration_samples': num_calibration_samples,
             'max_sequence_length': max_sequence_length,
             'symmetry': symmetry,
-            'output_huggingface': output_huggingface_gptq.format(bit=bit, lang=lang),
+            'output_huggingface': output_huggingface_gptq,
             'evaluation_dataset': evaluation_dataset,
             'num_shot': num_shot,
             'apply_chat_template': apply_chat_template,
@@ -166,7 +171,7 @@ for i in range(1):
 
         result_gptq = eval_model(model, device_str)
 
-        with open(result_path_gptq.format(bit=bit, lang=lang), 'wb') as file:
+        with open(result_path_gptq, 'wb') as file:
             pickle.dump(result_gptq, file)
 
         def make_table(file_json):
@@ -189,18 +194,16 @@ for i in range(1):
                 version = file_json["versions"][k]
                 percent = k == "squad2"
 
-                task = k.split("_")[0]
-                lang = k.split("_")[1]
-                if task == "xnli":
-                    task_index = 0
-                elif task == "xwinograd":
-                    task_index = 1
-                elif task == "xstorycloze":
-                    task_index = 2
+                task_index = 0
+                task = "".join(k.split("_")[:3])
+                lang = k.split("_")[-1]
+                acc, stderr = 0, 0
                 for m, v in dic.items():
                     # print(m, dic)
                     if m.endswith("_stderr,none"):
-                        continue
+                        stderr = v
+                    if m.endswith("acc,none"):
+                        acc = v
                     if m == 'alias':
                         continue
 
@@ -216,17 +219,18 @@ for i in range(1):
                         #         [task, lang, version, m, "%.2f" % (v * 100), "±", "%.2f" % (se * 100)]
                         #     )
                     # else:
-                    if percent or m == "ppl":
-                        values.append([task, lang, version, m, "%.2f" % v, "", ""])
-                        tasks_values[task_index].append([task, lang, version, v])
-                    else:
-                        try:
-                            values.append([task, lang, version, m, "%.2f" % (v * 100), "", ""])
-                            tasks_values[task_index].append([task, lang, version, v])
-                        except:
-                            pass
-                    k = ""
-                    version = ""
+                    # if percent or m == "ppl":
+                    #     values.append([task, lang, version, m, "%.2f" % v, "", ""])
+                    #     tasks_values[task_index].append([task, lang, version, v])
+                    # else:
+                    #     try:
+                    #     values.append([task, lang, version, m, "%.2f" % (v * 100), "", ""])
+                    #     tasks_values[task_index].append([task, lang, version, v])
+                    #     except:
+                    #     pass
+                    # k = ""
+                    # version = ""
+                tasks_values[task_index].append([task, lang, version, acc, stderr])
             md_writer.value_matrix = values
             latex_writer.value_matrix = values
 
@@ -235,29 +239,26 @@ for i in range(1):
 
             return tasks_values
 
-        """# Log to wandb"""
+        """# WandB Logging"""
 
-        wandb.login(key=wandb_key)
-
-        ENTITY = wandb.apis.PublicApi().default_entity
-        PROJECT = "calibration-on-quantized-multilingual"
-
-        """> Log Model and Summary Result also the file"""
+        import pprint
+        print(pprint.pformat(result_gptq))
 
         with wandb.init(
-            entity=ENTITY, project=PROJECT, config=wandb_config, name=wandb_runname.format(bit=bit, lang=lang)
+            entity=ENTITY, project=PROJECT, config=wandb_config, name=wandb_runname
         ) as run:
             # Log Accuracy
             clean_result = make_table(result_gptq)[0]
-            for task_name, lang_eval, task_version, accuracy in clean_result:
+            for task_name, lang_eval, task_version, accuracy, stderr in clean_result:
                 run.summary[f"{task_name}_acc_{lang_eval}"] = accuracy
+                run.summary[f"{task_name}_stderr_{lang_eval}"] = stderr
 
             # Log Result
             # columns = ["Eval Dataset", "Result"]
-            # data = [["xnli", pprint.pformat(result_gptq)]]
+            # data = [["xnli", pprint.pformat(result)]]
             # table = wandb.Table(data=data, columns=columns)
             # run.log({"result": table})
 
-            artifact = wandb.Artifact(name=f"{wandb_runname.format(bit=bit, lang=lang)}-result", type="eval-result")
-            artifact.add_file(local_path=f"./{result_path_gptq.format(bit=bit, lang=lang)}", name=f"{evaluation_dataset}-result.json")
+            artifact = wandb.Artifact(name=f"{wandb_runname}-result", type="eval-result")
+            artifact.add_file(local_path=f"./{result_path_gptq}", name=f"{wandb_runname}-result.json")
             artifact.save()

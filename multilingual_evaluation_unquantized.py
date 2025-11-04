@@ -20,8 +20,6 @@ import pandas as pd
 import pickle
 import pprint
 
-import bitsandbytes
-from transformers import BitsAndBytesConfig
 import wandb
 
 from pytablewriter import LatexTableWriter, MarkdownTableWriter
@@ -62,7 +60,7 @@ lang = "Unquantized"
 evaluation_dataset = "xnli"
 num_shot = 3
 apply_chat_template = True
-enable_thinking = False
+enable_thinking = True
 
 # Quantization Config
 quantization_technique = "Unquantized"
@@ -74,7 +72,7 @@ max_sequence_length = None
 symmetry = False
 
 output_path_bnb = f"./{model_id.split('/')[-1]}_{quantization_technique}_{bit}bit_{lang}"
-output_result_bnb = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}.json"
+output_result_bnb = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}_{'think' if enable_thinking else 'nothink'}.pkl"
 
 # WandB Logging
 # output_huggingface_gptq = f"fifrio/gemma-3-1b-pt-bnb-{bit}bit-calibration-{lang}"
@@ -95,7 +93,7 @@ wandb_config = {
     'apply_chat_template': apply_chat_template,
     'enable_thinking': enable_thinking,
 }
-wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}"
+wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}"
 
 """# Function"""
 
@@ -122,7 +120,7 @@ def eval_model(model, device='cpu'):
       apply_chat_template = apply_chat_template,
     #   gen_kwargs={'temperature': 0},
       predict_only=False,
-      log_samples=True,
+      log_samples=False,
       batch_size=batch_size,
       random_seed=1234,
   )
@@ -138,169 +136,121 @@ def eval_model(model, device='cpu'):
 ## BitsandBytes
 """
 
-import time
-print(f"Start Evaluating")
-start_time = time.time()
+if __name__ == "__main__":
+    import time
+    print(f"Start Evaluating")
+    start_time = time.time()
 
-# tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
-# model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device, token=hf_key)
+    # tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
+    # model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device, token=hf_key)
 
-model = lm_eval_vllm(model_id, model_id, device=device_str)
+    model = lm_eval_vllm(model_id, model_id, device=device_str)
 
-result = eval_model(model, device=device_str)
+    result = eval_model(model, device=device_str)
 
-print(f"Finish Evaluating")
-print(f"Time span: {time.time()}-{start_time}")
+    print(f"Finish Evaluating")
+    print(f"Time span: {time.time()}-{start_time}")
 
-import pickle
-with open(output_result_bnb, 'wb') as file:
-    pickle.dump(result, file)
+    import pickle
+    with open(output_result_bnb, 'wb') as file:
+        pickle.dump(result, file)
 
-print(result)
+    # Script from the lm_eval library
+    import json
+    import logging
+    import os
 
-# Script from the lm_eval library
-import json
-import logging
-import os
-
-from pytablewriter import LatexTableWriter, MarkdownTableWriter
-
-
-logger = logging.getLogger(__name__)
+    from pytablewriter import LatexTableWriter, MarkdownTableWriter
 
 
-def make_table(result_dict):
-    """Generate table of results."""
-    md_writer = MarkdownTableWriter()
-    latex_writer = LatexTableWriter()
-    md_writer.headers = ["Task", "Version", "Metric", "Value", "", "Stderr"]
-    latex_writer.headers = ["Task", "Version", "Metric", "Value", "", "Stderr"]
+    logger = logging.getLogger(__name__)
 
-    values = []
+    def make_table(file_json):
+    # Script from the lm_eval library
+        """Generate table of results."""
+        md_writer = MarkdownTableWriter()
+        latex_writer = LatexTableWriter()
+        md_writer.headers = ["Task", "Language", "Version", "Metric", "Value", "", "Stderr"]
+        latex_writer.headers = ["Task", "Language", "Version", "Metric", "Value", "", "Stderr"]
 
-    for k, dic in sorted(result_dict["results"].items()):
-        version = result_dict["versions"][k]
-        percent = k == "squad2"
-        for m, v in dic.items():
-            if m.endswith("_stderr"):
-                continue
-            if m == 'alias':
+        values = []
+        # XCopa, XWinograd, XStoryCloze
+        # tasks_values = [[], [], []]
+        tasks_values = [[]]
+
+        for k, dic in sorted(file_json["results"].items()):
+            if "_" not in k:
                 continue
 
-            if m + "_stderr" in dic:
-                se = dic[m + "_stderr"]
-                if percent or m == "ppl":
-                    values.append([k, version, m, "%.2f" % v, "±", "%.2f" % se])
-                else:
-                    values.append(
-                        [k, version, m, "%.2f" % (v * 100), "±", "%.2f" % (se * 100)]
-                    )
-            else:
-                if percent or m == "ppl":
-                    values.append([k, version, m, "%.2f" % v, "", ""])
-                else:
-                    try:
-                      values.append([k, version, m, "%.2f" % (v * 100), "", ""])
-                    except:
-                      pass
-            k = ""
-            version = ""
-    md_writer.value_matrix = values
-    latex_writer.value_matrix = values
+            version = file_json["versions"][k]
+            percent = k == "squad2"
 
-    # todo: make latex table look good
-    # print(latex_writer.dumps())
-
-    return md_writer.dumps()
-
-print(make_table(result))
-
-def make_table(file_json):
-  # Script from the lm_eval library
-    """Generate table of results."""
-    md_writer = MarkdownTableWriter()
-    latex_writer = LatexTableWriter()
-    md_writer.headers = ["Task", "Language", "Version", "Metric", "Value", "", "Stderr"]
-    latex_writer.headers = ["Task", "Language", "Version", "Metric", "Value", "", "Stderr"]
-
-    values = []
-    # XCopa, XWinograd, XStoryCloze
-    # tasks_values = [[], [], []]
-    tasks_values = [[]]
-
-    for k, dic in sorted(file_json["results"].items()):
-        if "_" not in k:
-            continue
-
-        version = file_json["versions"][k]
-        percent = k == "squad2"
-
-        task = k.split("_")[0]
-        lang = k.split("_")[1]
-        if task == "xnli":
             task_index = 0
-        elif task == "xwinograd":
-            task_index = 1
-        elif task == "xstorycloze":
-            task_index = 2
-        for m, v in dic.items():
-            # print(m, dic)
-            if m.endswith("_stderr,none"):
-                continue
-            if m == 'alias':
-                continue
+            task = "".join(k.split("_")[:3])
+            lang = k.split("_")[-1]
+            acc, stderr = 0, 0
+            for m, v in dic.items():
+                # print(m, dic)
+                if m.endswith("_stderr,none"):
+                    stderr = v
+                if m.endswith("acc,none"):
+                    acc = v
+                if m == 'alias':
+                    continue
 
-            m = m.split(",")[0]
+                m = m.split(",")[0]
 
-            # The eval provide std error, for now, skip those
-            # if m + "_stderr,none" in dic:
-                # se = dic[m + "_stderr,none"]
-                # if percent or m == "ppl":
-                #     values.append([task, lang, version, m, "%.2f" % v, "±", "%.2f" % se])
+                # The eval provide std error, for now, skip those
+                # if m + "_stderr,none" in dic:
+                    # se = dic[m + "_stderr,none"]
+                    # if percent or m == "ppl":
+                    #     values.append([task, lang, version, m, "%.2f" % v, "±", "%.2f" % se])
+                    # else:
+                    #     values.append(
+                    #         [task, lang, version, m, "%.2f" % (v * 100), "±", "%.2f" % (se * 100)]
+                    #     )
                 # else:
-                #     values.append(
-                #         [task, lang, version, m, "%.2f" % (v * 100), "±", "%.2f" % (se * 100)]
-                #     )
-            # else:
-            if percent or m == "ppl":
-                values.append([task, lang, version, m, "%.2f" % v, "", ""])
-                tasks_values[task_index].append([task, lang, version, v])
-            else:
-                try:
-                  values.append([task, lang, version, m, "%.2f" % (v * 100), "", ""])
-                  tasks_values[task_index].append([task, lang, version, v])
-                except:
-                  pass
-            k = ""
-            version = ""
-    md_writer.value_matrix = values
-    latex_writer.value_matrix = values
+                # if percent or m == "ppl":
+                #     values.append([task, lang, version, m, "%.2f" % v, "", ""])
+                #     tasks_values[task_index].append([task, lang, version, v])
+                # else:
+                #     try:
+                #     values.append([task, lang, version, m, "%.2f" % (v * 100), "", ""])
+                #     tasks_values[task_index].append([task, lang, version, v])
+                #     except:
+                #     pass
+                # k = ""
+                # version = ""
+            tasks_values[task_index].append([task, lang, version, acc, stderr])
+        md_writer.value_matrix = values
+        latex_writer.value_matrix = values
 
-    # todo: make latex table look good
-    # print(latex_writer.dumps())
+        # todo: make latex table look good
+        # print(latex_writer.dumps())
 
-    return tasks_values
+        return tasks_values
 
-"""# WandB Logging"""
+    """# WandB Logging"""
 
-import pprint
-pprint.pformat(result)
+    import pprint
+    print(pprint.pformat(result))
 
-with wandb.init(
-    entity=ENTITY, project=PROJECT, config=wandb_config, name=wandb_runname
-) as run:
-    # Log Accuracy
-    clean_result = make_table(result)[0]
-    for task_name, lang_eval, task_version, accuracy in clean_result:
-        run.summary[f"{task_name}_acc_{lang_eval}"] = accuracy
+    with wandb.init(
+        entity=ENTITY, project=PROJECT, config=wandb_config, name=wandb_runname
+    ) as run:
+        # Log Accuracy
+        clean_result = make_table(result)[0]
+        for task_name, lang_eval, task_version, accuracy, stderr in clean_result:
+            run.summary[f"{task_name}_acc_{lang_eval}"] = accuracy
+            run.summary[f"{task_name}_stderr_{lang_eval}"] = stderr
 
-    # Log Result
-    # columns = ["Eval Dataset", "Result"]
-    # data = [["xnli", pprint.pformat(result)]]
-    # table = wandb.Table(data=data, columns=columns)
-    # run.log({"result": table})
+        # Log Result
+        # columns = ["Eval Dataset", "Result"]
+        # data = [["xnli", pprint.pformat(result)]]
+        # table = wandb.Table(data=data, columns=columns)
+        # run.log({"result": table})
 
-    artifact = wandb.Artifact(name=f"{wandb_runname}-result", type="eval-result")
-    artifact.add_file(local_path=f"./{output_result_bnb}", name=f"{evaluation_dataset}-result.json")
-    artifact.save()
+        artifact = wandb.Artifact(name=f"{wandb_runname}-result", type="eval-result")
+        artifact.add_file(local_path=f"./{output_result_bnb}", name=f"{wandb_runname}-result.json")
+        artifact.save()
 
