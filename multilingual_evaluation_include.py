@@ -15,6 +15,9 @@ Original file is located at
 import os
 from dotenv import load_dotenv
 
+import ruamel.yaml
+yaml = ruamel.yaml.YAML()
+
 import torch
 # from lm_eval.models.huggingface import HFLM
 from lm_eval.models.vllm_causallms import VLLM
@@ -57,34 +60,69 @@ PROJECT = "calibration-on-quantized-multilingual"
 eval_languages = ["Indonesian", "Chinese", "Tamil", "Russian"]
 
 for lang in eval_languages:
-    import yaml
     import lm_eval
+    update_util_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/include/few_shot_og/{lang}/temp_utils.py')}"
+    update_util_path_2 = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/include/default/{lang}/temp_utils.py')}"
+    update_util_file = '''
+from functools import partial
+
+def format_input(example):
+    return f'{example["question"].strip()}\\nA. {example["option_a"]}\\nB. {example["option_b"]}\\nC. {example["option_c"]}\\n D. {example["option_d"]}\\nAnswer:  '
+
+def _choice_from_int(example):
+    return ["A", "B", "C", "D"][int(example["answer"])]
+
+doc_to_text = format_input
+doc_to_target = _choice_from_int
+'''
+    with open(update_util_path, 'w') as f:
+        f.write(update_util_file)
+    with open(update_util_path_2, 'w') as f:
+        f.write(update_util_file)
+    with open(update_util_path, 'r') as f:
+        print(f.read())
+    
     update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/include/few_shot_og/{lang}/_{lang.lower()}_few_shot_og_template_yaml')}"
     update_yaml_path_2 = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/include/default/{lang}/_{lang.lower()}_template_yaml')}"
     # with open(update_yaml_path, 'r') as f:
     #     print(f"Yaml file content: {f.read()}")
-    update_yaml_file = {
-        "dataset_path": "CohereForAI/include-base-44",
-    "dataset_name": lang,
-    "test_split": "test",
-    "output_type": "multiple_choice",
-    "doc_to_text": "'{{question.strip()}}\nA. {{option_a}}\nB. {{option_b}}\nC. {{option_c}}\n D. {{option_d}}\n'",
-    "gen_prefix": "Answer: ",
-    "doc_to_choice": ["A", "B", "C", "D"],
-    "doc_to_target": "answer",
-    "metric_list":
-        [{"metric": "acc",
-        "aggregation": "mean",
-        "higher_is_better": True}],
-    "metadata":
-      {"version": 1.0}
-    }
-
+    update_yaml_file = f"""
+dataset_path: CohereForAI/include-base-44
+dataset_name: {lang}
+test_split: test
+output_type: generate_until
+doc_to_text: !function temp_utils.doc_to_text
+doc_to_target: !function temp_utils.doc_to_target
+generation_kwargs:
+  until:
+      - </s>
+      - <|im_end|>
+  do_sample: false
+  temperature: 0.0
+  max_gen_toks: 5
+filter_list:
+  - name: custom-extract
+    filter:
+      - function: regex
+        regex_pattern: '(?:[\\s>])([A-D])(?:[\\s<])'
+      - function: take_first
+metric_list:
+  - metric: exact_match
+    aggregation: mean
+    higher_is_better: true
+    ignore_case: true
+    ignore_punctuation: true
+metadata:
+    version: 1.1
+"""
+    
     """# Parameter"""
     with open(update_yaml_path, 'w') as f:
-        yaml.dump(update_yaml_file, f)
+        data = yaml.load(update_yaml_file)
+        yaml.dump(data, f)
     with open(update_yaml_path_2, 'w') as f:
-        yaml.dump(update_yaml_file, f)
+        data = yaml.load(update_yaml_file)
+        yaml.dump(data, f)
     # with open(update_yaml_path, 'r') as f:
     #     print(f"Yaml file content After overwrite: {f.read()}")
 
@@ -120,7 +158,7 @@ tokenizer_id = model_id
 lang = lang
 quantization_technique = quantization_technique
 bit = bit
-default_yaml = True
+default_yaml = False
 
 # Evaluation
 evaluation_dataset = "include"
@@ -190,8 +228,9 @@ wandb_config = {
     'apply_chat_template': apply_chat_template,
     'enable_thinking': enable_thinking,
     'default_yaml': default_yaml,
+    'output_type': "generate_until",
 }
-wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}{'-modyaml' if default_yaml else ''}"
+wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}{'-modyaml' if not default_yaml else ''}"
 
 """# Function"""
 
@@ -285,9 +324,9 @@ if __name__ == "__main__":
             acc, stderr = 0, 0
             for m, v in dic.items():
                 # print(m, dic)
-                if m.endswith("_stderr,none"):
+                if m.endswith("exact_match_stderr,custom-extract"):
                     stderr = v
-                if m.endswith("acc,none"):
+                if m.endswith("exact_match,custom-extract"):
                     acc = v
                 if m == 'alias':
                     continue

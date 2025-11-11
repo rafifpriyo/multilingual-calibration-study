@@ -57,70 +57,134 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["en", "id", "sw", "zh"]
+_INTENTS = ['datetime_query', 'iot_hue_lightchange', 'transport_ticket', 'takeaway_query', 'qa_stock',
+            'general_greet', 'recommendation_events', 'music_dislikeness', 'iot_wemo_off', 'cooking_recipe',
+            'qa_currency', 'transport_traffic', 'general_quirky', 'weather_query', 'audio_volume_up',
+            'email_addcontact', 'takeaway_order', 'email_querycontact', 'iot_hue_lightup',
+            'recommendation_locations', 'play_audiobook', 'lists_createoradd', 'news_query',
+            'alarm_query', 'iot_wemo_on', 'general_joke', 'qa_definition', 'social_query',
+            'music_settings', 'audio_volume_other', 'calendar_remove', 'iot_hue_lightdim',
+            'calendar_query', 'email_sendemail', 'iot_cleaning', 'audio_volume_down',
+            'play_radio', 'cooking_query', 'datetime_convert', 'qa_maths', 'iot_hue_lightoff',
+            'iot_hue_lighton', 'transport_query', 'music_likeness', 'email_query', 'play_music',
+            'audio_volume_mute', 'social_post', 'alarm_set', 'qa_factoid', 'calendar_set',
+            'play_game', 'alarm_remove', 'lists_remove', 'transport_taxi', 'recommendation_movies',
+            'iot_coffee', 'music_query', 'play_podcasts', 'lists_query']
 
-for lang in eval_languages:
-    import lm_eval
-    update_util_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/{lang}/temp_utils.py')}"
-    update_util_file = '''
+list_scenario = set([intent.split("_")[0] for intent in _INTENTS])
+dict_scenario = dict()
+for scenario in list_scenario:
+  dict_scenario[scenario] = set()
+for intent in _INTENTS:
+  dict_scenario[intent.split("_")[0]].add(intent)
+
+update_util_path = f"./utils.py"
+update_util_file = '''
 from functools import partial
 
-def format_input(example):
-    return f'{example["question"].strip()}\\nA. {example["option_a"]}\\nB. {example["option_b"]}\\nC. {example["option_c"]}\\n D. {example["option_d"]}\\nAnswer:  '
+_INTENTS = ['datetime_query', 'iot_hue_lightchange', 'transport_ticket', 'takeaway_query', 'qa_stock',
+            'general_greet', 'recommendation_events', 'music_dislikeness', 'iot_wemo_off', 'cooking_recipe',
+            'qa_currency', 'transport_traffic', 'general_quirky', 'weather_query', 'audio_volume_up',
+            'email_addcontact', 'takeaway_order', 'email_querycontact', 'iot_hue_lightup',
+            'recommendation_locations', 'play_audiobook', 'lists_createoradd', 'news_query',
+            'alarm_query', 'iot_wemo_on', 'general_joke', 'qa_definition', 'social_query',
+            'music_settings', 'audio_volume_other', 'calendar_remove', 'iot_hue_lightdim',
+            'calendar_query', 'email_sendemail', 'iot_cleaning', 'audio_volume_down',
+            'play_radio', 'cooking_query', 'datetime_convert', 'qa_maths', 'iot_hue_lightoff',
+            'iot_hue_lighton', 'transport_query', 'music_likeness', 'email_query', 'play_music',
+            'audio_volume_mute', 'social_post', 'alarm_set', 'qa_factoid', 'calendar_set',
+            'play_game', 'alarm_remove', 'lists_remove', 'transport_taxi', 'recommendation_movies',
+            'iot_coffee', 'music_query', 'play_podcasts', 'lists_query']
 
-def _choice_from_int(example):
-    return ["A", "B", "C", "D"][int(example["answer"])]
+def _intent_from_int(example):
+    return _INTENTS[int(example['intent'])]
 
-doc_to_text = format_input
-doc_to_target = _choice_from_int
+def format_cot_example(example, including_answer=True):
+    prompt = 'Utterance:\\n'
+    question = example["utt"]
+    prompt += question + '\\n'
+
+    if including_answer:
+        prompt += 'Answer: '
+    else:
+        prompt += 'Answer: '
+
+    return prompt
+
+
+doc_to_text = partial(format_cot_example, including_answer=False)
+fewshot_to_text = partial(format_cot_example, including_answer=True)
+doc_to_target = _intent_from_int
 '''
-    with open(update_util_path, 'w') as f:
-        f.write(update_util_file)
-    # with open(update_util_path, 'r') as f:
-    #     print(f.read())
-    
-    update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/{lang}/_{lang}_template_yaml')}"
-    # with open(update_yaml_path, 'r') as f:
-    #     print(f"Yaml file content: {f.read()}")
+with open(update_util_path, 'w') as f:
+    f.write(update_util_file)
+with open(update_util_path, 'r') as f:
+    print(f.read())
+
+new_line = '\n'
+eval_language = ['en-US', 'zh-CN', 'id-ID', 'ta-IN']
+for lang in eval_language:
+    update_yaml_path = f"./massive-custom-{lang}.yaml"
     update_yaml_file = f"""
-dataset_path: CohereForAI/Global-MMLU-Lite
+task: massive_intent_classifier_{lang}
+dataset_path: AmazonScience/massive
 dataset_name: {lang}
 test_split: test
-fewshot_split: dev
-fewshot_config:
-    sampler: default
+fewshot_split: train
 output_type: generate_until
-doc_to_text: !function temp_utils.doc_to_text
-doc_to_target: !function temp_utils.doc_to_target
+description: "You are a home assistant AI that help classify user intent from text. 
+Use the examples below to understand the pattern. 
+Choose a single-word intent that best captures the primary purpose of the query. 
+If multiple intents are present, select the most dominant or urgent one. 
+Use only the following intent categories for the topic. 
+Answer only with the sub-intent detailed below without explanation
+{new_line.join([f'''- {scenario}: {', '.join(list(dict_scenario[scenario]))}''' for scenario in list_scenario])}"
+doc_to_text: !function utils.doc_to_text
+doc_to_target: !function utils.doc_to_target
 generation_kwargs:
   until:
       - </s>
       - <|im_end|>
   do_sample: false
   temperature: 0.0
-  max_gen_toks: 5
+  max_gen_toks: 6
 filter_list:
-  - name: custom-extract
+  - name: "custom-extract"
     filter:
-      - function: regex
-        regex_pattern: '(?:[\\s>])([A-D])(?:[\\s<])'
-      - function: take_first
+      - function: "regex"
+        regex_pattern: '(?:^|\s)(\w*_\w*)(?:[<\s]|$)'
+      - function: "take_first"
 metric_list:
   - metric: exact_match
     aggregation: mean
     higher_is_better: true
     ignore_case: true
-    ignore_punctuation: true
+    ignore_punctuation: false
 metadata:
-    version: 1.1
+  version: 1.1
 """
 
     """# Parameter"""
     with open(update_yaml_path, 'w') as f:
-        data = yaml.load(update_yaml_file)
-        yaml.dump(data, f)
+        yaml.dump(update_yaml_file, f)
     # with open(update_yaml_path, 'r') as f:
     #     print(f"Yaml file content After overwrite: {f.read()}")
+
+task_manager = lm_eval.tasks.TaskManager(
+    include_path=os.path.dirname(update_yaml_path)
+)
+task_dict = lm_eval.tasks.get_task_dict(
+    [
+        f"massive_intent_classifier_{lang}" for lang in eval_language # A custom task
+    ],
+    task_manager # A task manager that allows lm_eval to
+                 # load the task during evaluation.
+                 # If none is provided, `get_task_dict`
+                 # will instantiate one itself, but this
+                 # only includes the stock tasks so users
+                 # will need to set this if including
+                 # custom paths is required.
+    )
 
 import importlib
 importlib.reload(lm_eval)
@@ -157,7 +221,7 @@ bit = bit
 default_yaml = False
 
 # Evaluation
-evaluation_dataset = "globalmmlulite"
+evaluation_dataset = "massive"
 num_shot = 5
 apply_chat_template = True
 enable_thinking = False
@@ -246,7 +310,8 @@ def lm_eval_vllm(model, tokenizer, device: str):
 def eval_model(model, device='cpu'):
   return simple_evaluate(
       model=model,
-      tasks=[f"global_mmlu_{lang}" for lang in eval_languages],
+      tasks=[f"massive_intent_classifier_{lang}" for lang in eval_languages],
+      task_manager=task_manager,
             # "xwinograd",
             #  "xstorycloze"],
       device=device,
@@ -315,7 +380,7 @@ if __name__ == "__main__":
             percent = k == "squad2"
 
             task_index = 0
-            task = "".join(k.split("_")[:2]) + "lite"
+            task = k.split("_")[0]
             lang = k.split("_")[-1]
             acc, stderr = 0, 0
             for m, v in dic.items():
