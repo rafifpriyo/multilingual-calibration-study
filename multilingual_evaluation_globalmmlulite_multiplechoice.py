@@ -57,7 +57,8 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "ko", "el", "id", "sw", "te", "ne", "mg"]
+# eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "ko", "el", "id", "sw", "te", "ne", "mg"]   # FULL
+eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ko", "bn", "id", "sw", "yo"]   # LITE
 
 for lang in eval_languages:
     import lm_eval

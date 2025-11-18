@@ -57,7 +57,7 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["Arabic", "Chinese", "French", "Hindi", "Japanese", "Indonesia", "Tamil", "Malay", "Korean", "Telugu", "Nepali", "Albanian"]
+eval_languages = ["Arabic", "Chinese", "French", "Hindi", "Japanese", "Indonesian", "Tamil", "Malay", "Korean", "Telugu", "Nepali", "Albanian"]
 
 for lang in eval_languages:
     import lm_eval

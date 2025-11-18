@@ -277,7 +277,7 @@ wandb_config = {
     'apply_chat_template': apply_chat_template,
     'enable_thinking': enable_thinking,
     'default_yaml': default_yaml,
-    'output_type': "generate_until",
+    'output_type': "multiple_choice",
 }
 wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-multiplechoice"
 
