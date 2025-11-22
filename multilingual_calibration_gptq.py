@@ -29,6 +29,7 @@ import argparse
 parser = argparse.ArgumentParser("args_gptq")
 parser.add_argument("--lang", type=str)
 parser.add_argument("--bit", type=int)
+parser.add_argument("--nsamples", type=int)
 
 """# Parameter"""
 
@@ -77,6 +78,7 @@ ISO_2_lst = ["en",
 args = parser.parse_args()
 lang = args.lang
 bit = args.bit
+nsamples = args.nsamples
 ISO_3 = ISO_3_lst[lang_lst.index(lang)]
 print(f"lang {lang} bit {bit}")
 
@@ -93,16 +95,16 @@ output_path_gptq = f"./{model_id.split('/')[-1]}_{quantization_technique}_{{bit}
 ## Calibration size
 SYMMETRY = False
 GROUP_SIZE=128
-NUM_CALIBRATION_SAMPLES=512
+NUM_CALIBRATION_SAMPLES=nsamples
 MAX_SEQUENCE_LENGTH=2048
 
 # huggingface
-output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}"
+output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}{'-128samples' if NUM_CALIBRATION_SAMPLES == 128 else ''}"
 
 """# Looping"""
 
 #for bit in bit_lst:
-for i in range(1):
+if __name__ == "__main__":
     for j in range(1):
     #for lang, ISO_3 in zip(lang_lst, ISO_3_lst):
         """## Calibration data

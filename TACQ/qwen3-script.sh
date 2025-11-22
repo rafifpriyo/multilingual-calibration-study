@@ -5,13 +5,14 @@ set -x
 importances_dir="./importances_dir/results"
 checkpoints_dir="./model_checkpoints"
 
-model_name="Qwen3-1.7B" 
+model_name="Qwen3-1.7B"
 loadstring="Qwen"
 groupsize=128
-datasets=("flores_Chinese") 
+nsamples=128
+datasets=("flores_English flores_Indonesian flores_Tamil flores_Swahili flores_Chinese") 
 serial_numbers=(1234)
 selector_types=("sample_abs_weight_prod_contrastive")
-quantization_types=("q4" "q8")
+quantization_types=("q2" "q4" "q8")
 ranking_types=("top_p_sparse") 
 ratios=(".0035") 
 
@@ -46,6 +47,7 @@ do
                                 --save_in_16bits $checkpoints_dir/${corrupt_model_name}.pt \
                                 --wbits $wbits \
                                 --groupsize $groupsize \
+                                --nsamples $nsamples \
                                 --seed $serial_number \
                                 --no-eval
                         fi
@@ -61,6 +63,7 @@ do
                             --results_dir $importances_dir \
                             --selector_type $selector_type \
                             --serial_number $serial_number \
+                            --n_calibration_points $nsamples \
                             --save_full_gradients \
                             --save_importances_pt_path $importances_dir/$run_name/importances.pt \
                             --override_args_yaml \
@@ -92,10 +95,11 @@ do
                             $dataset \
                             --true-sequential \
                             --fine-wbits-yaml $importances_dir/$run_name/quantization_configs_${quant_identifier}.yaml \
-                            --save_in_16bits_pretrained $importances_dir/$run_name/${quantized_model_name}.pt \
+                            --save_in_16bits_pretrained $importances_dir/$run_name/ \
                             --no-eval \
                             --seed $serial_number \
                             --groupsize $groupsize \
+                            --nsamples $nsamples \
                             --important_mask $importances_dir/$run_name/important_mask_${quant_identifier}.pt
 
                         quantized_model_names+=("$quantized_model_name")
@@ -103,6 +107,7 @@ do
                         pixi run python -m multilingual_huggingface_tacq \
                             --lang ${dataset} \
                             --bit ${wbits} \
+                            --nsamples ${nsamples} \
                             --save_path $importances_dir/$run_name/
 
                     done

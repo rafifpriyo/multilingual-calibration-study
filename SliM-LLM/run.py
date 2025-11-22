@@ -44,7 +44,7 @@ quantization_technique = "slimllm"
 
 # huggingface
 model_id = "Qwen/Qwen3-1.7B"
-output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}-calibration-{{lang}}"
+output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}-calibration-{{lang}}{{nsamples}}"
 
 
 # Slim-LLM
@@ -553,12 +553,12 @@ if __name__ == "__main__":
 
     """# Upload to Huggingface"""
 
-    create_repo(output_huggingface_gptq.format(bit=args.low_quant_method, lang=args.dataset_subset), repo_type="model", token=hf_key)
+    create_repo(output_huggingface_gptq.format(bit=args.low_quant_method, lang=args.dataset_subset, nsamples='-128samples' if args.nsamples == 128 else ''), repo_type="model", token=hf_key)
 
     api = HfApi(token=hf_key)
 
     api.upload_folder(
         folder_path=save_file,
-        repo_id=output_huggingface_gptq.format(bit=args.low_quant_method, lang=args.dataset_subset),
+        repo_id=output_huggingface_gptq.format(bit=args.low_quant_method, lang=args.dataset_subset, nsamples='-128samples' if args.nsamples == 128 else ''),
         repo_type="model",
     )
