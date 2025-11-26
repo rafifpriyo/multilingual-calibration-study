@@ -187,11 +187,13 @@ parser = argparse.ArgumentParser("args_gptq")
 parser.add_argument("--quantization_technique", type=str)
 parser.add_argument("--lang", type=str)
 parser.add_argument("--bit", type=int)
+parser.add_argument("--nsamples", type=int, choices=[None, 128, 512])
 args = parser.parse_args()
 quantization_technique = args.quantization_technique
 lang = args.lang
 bit = args.bit
-print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit")
+nsamples = args.nsamples
+print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit - {nsamples} samples")
 
 """## Parameter"""
 # Eval Language on the Task's Yaml Section
@@ -230,7 +232,7 @@ elif quantization_technique == "gptq":
     quantization_technique = "gptq"
     granularity = "group"
     group_size = 128
-    num_calibration_samples = 512
+    num_calibration_samples = nsamples
     max_sequence_length = 2048
     symmetry = False
 elif quantization_technique == "slimllm":
@@ -239,7 +241,7 @@ elif quantization_technique == "slimllm":
     quantization_technique = "slimllm"
     granularity = "group"
     group_size = 128
-    num_calibration_samples = 512
+    num_calibration_samples = nsamples
     max_sequence_length = 2048
     symmetry = False
 elif quantization_technique == "tacq":
@@ -248,7 +250,7 @@ elif quantization_technique == "tacq":
     quantization_technique = "tacq"
     granularity = "group"
     group_size = 128
-    num_calibration_samples = 512
+    num_calibration_samples = nsamples
     max_sequence_length = 2048
     symmetry = False
 
@@ -260,7 +262,7 @@ output_result_bnb = f"./{evaluation_dataset}_{num_shot}shot_{quantization_techni
 if quantization_technique == "Unquantized":
     output_huggingface_gptq = None
 else:
-    output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-calibration-{lang}"
+    output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-calibration-{lang}{'-128samples' if num_calibration_samples == 128 else ''}"
 wandb_config = {
     'base_model': model_id,
     'quantization_technique': quantization_technique,
@@ -279,7 +281,7 @@ wandb_config = {
     'default_yaml': default_yaml,
     'output_type': "multiple_choice",
 }
-wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-multiplechoice"
+wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-multiplechoice{'-128samples' if num_calibration_samples == 128 else ''}"
 
 """# Function"""
 
