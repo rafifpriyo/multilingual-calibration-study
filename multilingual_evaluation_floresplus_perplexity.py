@@ -57,28 +57,32 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "ko", "el", "id", "sw", "te", "ne", "yo"]
+eval_languages = ["arb_Arab", "eng_Latn", "cmn_Hans", "hin_Deva", "fra_Latn", "jpn_Jpan", "zsm_Latn", "kor_Hang", "ell_Grek", "ind_Latn", "swh_Latn", "tel_Telu", "npi_Deva", "yor_Latn"]
 
 for lang in eval_languages:
     import lm_eval
+    import shutil
+    update_util_path = f"./flores_plus_utils.py"
+    util_source_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/c4/preprocess_c4.py')}"
 
-    update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/c4/c4_{lang.lower()}.yaml')}"
+    shutil.copyfile(util_source_path, update_util_path)
+
+    update_yaml_path = f"./flores_plus-custom_{lang}.yaml"
     # with open(update_yaml_path, 'r') as f:
     #     print(f"Yaml file content: {f.read()}")
     update_yaml_file = f"""
-task: c4_{lang}
-dataset_path: allenai/c4
+task: flores_plus_{lang}
+dataset_path: openlanguagedata/flores_plus
 dataset_kwargs:
   data_files:
-    validation: {f'multilingual/c4-{lang}-validation.*.json.gz' if lang != 'en' else 'en/c4-validation.*.json.gz'}
-  # following the choice of https://arxiv.org/abs/2410.07461
+    devtest: devtest/{lang}.parquet
   verification_mode: "no_checks"
 output_type: loglikelihood_rolling
 training_split: null
-test_split: validation
+test_split: devtest
 doc_to_text: ""
-doc_to_target: !function preprocess_c4.c4_detokenizer
-process_results: !function preprocess_c4.process_results
+doc_to_target: !function flores_plus_utils.c4_detokenizer
+process_results: !function flores_plus_utils.process_results
 should_decontaminate: true
 doc_to_decontamination_query: "{{page}}"
 metric_list:
@@ -95,6 +99,22 @@ metadata:
         yaml.dump(data, f)
     # with open(update_yaml_path, 'r') as f:
     #     print(f"Yaml file content After overwrite: {f.read()}")
+
+task_manager = lm_eval.tasks.TaskManager(
+    include_path=os.path.dirname(update_yaml_path)
+)
+task_dict = lm_eval.tasks.get_task_dict(
+    [
+        f"flores_plus_{lang}" for lang in eval_languages # A custom task
+    ],
+    task_manager # A task manager that allows lm_eval to
+                 # load the task during evaluation.
+                 # If none is provided, `get_task_dict`
+                 # will instantiate one itself, but this
+                 # only includes the stock tasks so users
+                 # will need to set this if including
+                 # custom paths is required.
+    )
 
 import importlib
 importlib.reload(lm_eval)
@@ -134,7 +154,7 @@ bit = bit
 default_yaml = False
 
 # Evaluation
-evaluation_dataset = "mc4"
+evaluation_dataset = "floresplus"
 num_shot = None
 apply_chat_template = True
 enable_thinking = False
@@ -208,7 +228,6 @@ wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{l
 """# Function"""
 
 import os
-os.environ['VLLM_ALLOW_LONG_MAX_MODEL_LEN']='1'
 def lm_eval_vllm(model, tokenizer, device: str):
 #   return HFLM(
   return VLLM(
@@ -226,7 +245,8 @@ def lm_eval_vllm(model, tokenizer, device: str):
 def eval_model(model, device='cpu'):
   return simple_evaluate(
       model=model,
-      tasks=[f"c4_{lang}" for lang in eval_languages],
+      tasks=[f"flores_plus_{lang}" for lang in eval_languages],
+      task_manager=task_manager,
             # "xwinograd",
             #  "xstorycloze"],
       device=device,
@@ -295,8 +315,8 @@ if __name__ == "__main__":
             percent = k == "squad2"
 
             task_index = 0
-            task = k.split("_")[0]
-            lang = k.split("_")[-1]
+            task = "".join(k.split("_")[:2])
+            lang = "_".join(k.split("_")[-2:])
             acc, stderr = 0, 0
             for m, v in dic.items():
                 # print(m, dic)
