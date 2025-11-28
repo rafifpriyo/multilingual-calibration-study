@@ -56,7 +56,7 @@ def preprocess_calibration_datasets(args, tokenizer, indices_for_choices, n_cali
             "Indonesian": "ind_Latn",
             "Tamil": "tam_Taml",
             "Swahili": "swh_Latn",
-            "Chinese": "wuu_Hans",
+            "Chinese": "cmn_Hans",
         }
         if subset in lang_mapper:
             train_dataset = Flores_Dataset(seed=args.serial_number, use_train_split=True, tokenizer_name=tokenizer.name_or_path, subset=lang_mapper[subset], verbose=False, nsamples=n_calibration_points, seqlen=seqlen, device="cuda")

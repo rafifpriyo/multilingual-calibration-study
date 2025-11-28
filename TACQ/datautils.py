@@ -191,7 +191,7 @@ def get_loaders(
             "Indonesian": "ind_Latn",
             "Tamil": "tam_Taml",
             "Swahili": "swh_Latn",
-            "Chinese": "wuu_Hans",
+            "Chinese": "cmn_Hans",
         }
         if subset in lang_mapper:
             return get_flores(nsamples, seed, seqlen, model, subset=lang_mapper[subset])

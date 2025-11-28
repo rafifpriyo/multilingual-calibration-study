@@ -493,7 +493,7 @@ if __name__ == "__main__":
             "Indonesian": "ind_Latn",
             "Tamil": "tam_Taml",
             "Swahili": "swh_Latn",
-            "Chinese": "wuu_Hans",
+            "Chinese": "cmn_Hans",
             None: None
         }
         return lang_mapper[lang]

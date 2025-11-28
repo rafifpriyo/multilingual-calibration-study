@@ -54,7 +54,7 @@ model_id = "Qwen/Qwen3-1.7B"
 #              "Turkish", "Vietnamese", "Chinese"]
 # ISO_3_lst = ["ekk_Latn", "hat_Latn", "ind_Latn", "ita_Latn",
 #              "quy_Latn", "swh_Latn", "tam_Taml", "tha_Thai",
-#              "tur_Latn", "vie_Latn", "wuu_Hans"]
+#              "tur_Latn", "vie_Latn", "cmn_Hans"]
 # ISO_2_lst = ["et", "ht", "id", "it",
 #              "qu", "sw", "ta", "th",
 #              "tr", "vi", "zh"]
@@ -68,7 +68,7 @@ ISO_3_lst = ["eng_Latn",
              "ind_Latn",
              "tam_Taml",
              "swh_Latn",
-             "wuu_Hans"]
+             "cmn_Hans"]
 ISO_2_lst = ["en",
              "id",
              "ta",
