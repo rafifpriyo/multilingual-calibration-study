@@ -542,7 +542,7 @@ if __name__ == "__main__":
     if args.save:
         # save the packed results with mixed-precision
         if args.pack:
-            bits = int(args.low_quant_method)
+            bits = int(args.low_quant_method[0])
             pack_model(model, save_file, bits, groupsize, quantizers, block_precision)
         # save the fake quantized resulta with FP14 format
         else:

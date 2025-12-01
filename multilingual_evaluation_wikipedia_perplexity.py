@@ -57,32 +57,30 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["arb_Arab", "eng_Latn", "cmn_Hans", "hin_Deva", "fra_Latn", "jpn_Jpan", "zsm_Latn", "kor_Hang", "ell_Grek", "ind_Latn", "swh_Latn", "tel_Telu", "npi_Deva", "yor_Latn"]
+eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "jo", "ta", "id", "sw", "te", "ne", "yo"]
 
 for lang in eval_languages:
     import lm_eval
     import shutil
-    update_util_path = f"./flores_plus_utils.py"
+    update_util_path = f"./wikipedia_utils.py"
     util_source_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/c4/preprocess_c4.py')}"
 
     shutil.copyfile(util_source_path, update_util_path)
 
-    update_yaml_path = f"./flores_plus-custom_{lang}.yaml"
+    update_yaml_path = f"./wikipedia-custom_{lang}.yaml"
     # with open(update_yaml_path, 'r') as f:
     #     print(f"Yaml file content: {f.read()}")
     update_yaml_file = f"""
-task: flores_plus_{lang}
-dataset_path: openlanguagedata/flores_plus
-dataset_kwargs:
-  data_files:
-    devtest: devtest/{lang}.parquet
-  verification_mode: "no_checks"
+task: wikipedia_{lang}
+dataset_path: wikimedia/wikipedia
+dataset_name: 20231101.{lang}
 output_type: loglikelihood_rolling
-training_split: null
-test_split: devtest
+training_split:
+fewshot_split:
+test_split: train
 doc_to_text: ""
-doc_to_target: !function flores_plus_utils.c4_detokenizer
-process_results: !function flores_plus_utils.process_results
+doc_to_target: !function wikipedia_utils.c4_detokenizer
+process_results: !function wikipedia_utils.process_results
 should_decontaminate: true
 doc_to_decontamination_query: "{{text}}"
 metric_list:
@@ -105,7 +103,7 @@ task_manager = lm_eval.tasks.TaskManager(
 )
 task_dict = lm_eval.tasks.get_task_dict(
     [
-        f"flores_plus_{lang}" for lang in eval_languages # A custom task
+        f"wikipedia_{lang}" for lang in eval_languages # A custom task
     ],
     task_manager # A task manager that allows lm_eval to
                  # load the task during evaluation.
@@ -154,7 +152,7 @@ bit = bit
 default_yaml = False
 
 # Evaluation
-evaluation_dataset = "floresplus"
+evaluation_dataset = "wikipedia"
 num_shot = None
 apply_chat_template = True
 enable_thinking = False
