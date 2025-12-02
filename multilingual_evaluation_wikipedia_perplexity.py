@@ -243,11 +243,12 @@ def lm_eval_vllm(model, tokenizer, device: str):
 def eval_model(model, device='cpu'):
   return simple_evaluate(
       model=model,
-      tasks=[f"flores_plus_{lang}" for lang in eval_languages],
+      tasks=[f"wikipedia_{lang}" for lang in eval_languages],
       task_manager=task_manager,
             # "xwinograd",
             #  "xstorycloze"],
       device=device,
+      limit=1000,
       num_fewshot=num_shot,
       apply_chat_template = apply_chat_template,
     #   gen_kwargs={'temperature': 0},
@@ -313,8 +314,8 @@ if __name__ == "__main__":
             percent = k == "squad2"
 
             task_index = 0
-            task = "".join(k.split("_")[:2])
-            lang = "_".join(k.split("_")[-2:])
+            task = k.split("_")[0]
+            lang = k.split("_")[-1]
             acc, stderr = 0, 0
             for m, v in dic.items():
                 # print(m, dic)
