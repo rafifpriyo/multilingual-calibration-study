@@ -55,7 +55,7 @@ certifi = ">=2017.4.17"
 device-smi = "==0.4.1"
 gptqmodel = "==4.2.0"
 
-vllm = ">=0.11.0"
+vllm = "==0.11.0"
 
 [pypi-options]
 no-build-isolation = ["gptqmodel"]

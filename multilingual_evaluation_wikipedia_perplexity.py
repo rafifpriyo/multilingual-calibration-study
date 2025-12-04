@@ -57,7 +57,7 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "jo", "ta", "id", "sw", "te", "ne", "yo"]
+eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "ko", "ta", "id", "sw", "te", "ne", "yo"]
 
 for lang in eval_languages:
     import lm_eval
@@ -101,18 +101,6 @@ metadata:
 task_manager = lm_eval.tasks.TaskManager(
     include_path=os.path.dirname(update_yaml_path)
 )
-task_dict = lm_eval.tasks.get_task_dict(
-    [
-        f"wikipedia_{lang}" for lang in eval_languages # A custom task
-    ],
-    task_manager # A task manager that allows lm_eval to
-                 # load the task during evaluation.
-                 # If none is provided, `get_task_dict`
-                 # will instantiate one itself, but this
-                 # only includes the stock tasks so users
-                 # will need to set this if including
-                 # custom paths is required.
-    )
 
 import importlib
 importlib.reload(lm_eval)
@@ -240,10 +228,10 @@ def lm_eval_vllm(model, tokenizer, device: str):
     gpu_memory_utilization=0.75,
 )
 
-def eval_model(model, device='cpu'):
+def eval_model(model, tasks, task_manager, device='cpu'):
   return simple_evaluate(
       model=model,
-      tasks=[f"wikipedia_{lang}" for lang in eval_languages],
+      tasks=tasks,
       task_manager=task_manager,
             # "xwinograd",
             #  "xstorycloze"],
@@ -260,19 +248,42 @@ def eval_model(model, device='cpu'):
   )
 
 if __name__ == "__main__":
-    import time
-    print(f"Start Evaluating")
-    start_time = time.time()
-
-    # tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
-    # model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device, token=hf_key)
+    result_dict = {}
 
     if quantization_technique == "Unquantized":
         model = lm_eval_vllm(model_id, tokenizer_id, device=device_str)
     else:
         model = lm_eval_vllm(output_huggingface_gptq, tokenizer_id, device=device_str)
 
-    result = eval_model(model, device=device_str)
+    # Evaluation one language at a time, more CPU RAM friendly
+    import time
+    print(f"Start Evaluating")
+    start_time = time.time()
+    for lang in eval_languages:
+
+        # tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
+        # model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device, token=hf_key)
+
+        tasks = [f"wikipedia_{lang}"]
+        task_dict = lm_eval.tasks.get_task_dict(
+        tasks,
+        task_manager # A task manager that allows lm_eval to
+                    # load the task during evaluation.
+                    # If none is provided, `get_task_dict`
+                    # will instantiate one itself, but this
+                    # only includes the stock tasks so users
+                    # will need to set this if including
+                    # custom paths is required.
+        )
+
+        result = eval_model(model, tasks, task_dict, device=device_str)
+
+        for key in result.keys():
+            if key not in result_dict:
+                result_dict[key] = result[key]
+            elif isinstance(result_dict[key], dict):
+                result_dict[key] = result_dict[key] | result[key]
+    result = result_dict
 
     print(f"Finish Evaluating")
     print(f"Time span: {time.time()}-{start_time}")

@@ -52,7 +52,7 @@ sqlitedict = "==2.1.0"
 tqdm = "==4.66.3"
 zstandard = "==0.22.0"
 
-vllm = ">=0.11.0"
+vllm = "==0.11.0"
 
 [feature.gpu.system-requirements]
 cuda = "12.8"
