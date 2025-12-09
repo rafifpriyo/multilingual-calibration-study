@@ -98,10 +98,6 @@ metadata:
     # with open(update_yaml_path, 'r') as f:
     #     print(f"Yaml file content After overwrite: {f.read()}")
 
-task_manager = lm_eval.tasks.TaskManager(
-    include_path=os.path.dirname(update_yaml_path)
-)
-
 import importlib
 importlib.reload(lm_eval)
 from lm_eval.models.vllm_causallms import VLLM
@@ -111,12 +107,14 @@ from lm_eval import simple_evaluate
 import argparse
 
 parser = argparse.ArgumentParser("args_gptq")
+parser.add_argument("--model_id", type=str)
 parser.add_argument("--quantization_technique", type=str)
 parser.add_argument("--lang", type=str)
 parser.add_argument("--bit", type=int)
 parser.add_argument("--nsamples", type=int, choices=[None, 128, 512])
 args = parser.parse_args()
 quantization_technique = args.quantization_technique
+model_id = args.model_id
 lang = args.lang
 bit = args.bit
 nsamples = args.nsamples
@@ -130,7 +128,7 @@ batch_size = 4
 # bit = 32
 
 # Model
-model_id = "Qwen/Qwen3-1.7B"
+model_id = model_id
 tokenizer_id = model_id
 max_model_len = 40960
 # lang = "Unquantized"
@@ -265,18 +263,11 @@ if __name__ == "__main__":
         # model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device, token=hf_key)
 
         tasks = [f"wikipedia_{lang}"]
-        task_dict = lm_eval.tasks.get_task_dict(
-        tasks,
-        task_manager # A task manager that allows lm_eval to
-                    # load the task during evaluation.
-                    # If none is provided, `get_task_dict`
-                    # will instantiate one itself, but this
-                    # only includes the stock tasks so users
-                    # will need to set this if including
-                    # custom paths is required.
+        task_manager = lm_eval.tasks.TaskManager(
+            include_path=os.path.dirname(update_yaml_path)
         )
 
-        result = eval_model(model, tasks, task_dict, device=device_str)
+        result = eval_model(model, tasks, task_manager, device=device_str)
 
         for key in result.keys():
             if key not in result_dict:
@@ -286,7 +277,7 @@ if __name__ == "__main__":
     result = result_dict
 
     print(f"Finish Evaluating")
-    print(f"Time span: {time.time()}-{start_time}")
+    print(f"Time span: {time.time()-start_time}")
 
     import pickle
     with open(output_result_bnb, 'wb') as file:

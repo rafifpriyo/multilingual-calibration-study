@@ -38,14 +38,6 @@ wandb_key = os.environ["WANDB_KEY"]
 from huggingface_hub import login
 login(token=hf_key)
 
-# Parameter
-# Quantization
-quantization_technique = "slimllm"
-
-# huggingface
-model_id = "Qwen/Qwen3-1.7B"
-output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}-calibration-{{lang}}{{nsamples}}"
-
 
 # Slim-LLM
 def get_model(model):
@@ -471,6 +463,14 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     print(args)
+
+    # Parameter
+    # Quantization
+    quantization_technique = "slimllm"
+
+    # huggingface
+    model_id = args.model
+    output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}-calibration-{{lang}}{{nsamples}}"
 
     # get the block precision of the model
     # if the block precision does not exist, start Salience-Determined Bit Allocation

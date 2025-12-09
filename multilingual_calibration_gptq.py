@@ -27,6 +27,7 @@ from huggingface_hub import HfApi
 import argparse
 
 parser = argparse.ArgumentParser("args_gptq")
+parser.add_argument("--model_id", type=str)
 parser.add_argument("--lang", type=str)
 parser.add_argument("--bit", type=int)
 parser.add_argument("--nsamples", type=int)
@@ -45,8 +46,11 @@ wandb_key = os.environ["WANDB_KEY"]
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# Model
-model_id = "Qwen/Qwen3-1.7B"
+args = parser.parse_args()
+model_id = args.model_id
+lang = args.lang
+bit = args.bit
+nsamples = args.nsamples
 
 # Calibration Dataset
 # lang_lst = ["Estonian", "Haitian", "Indonesian", "Italian",
@@ -75,10 +79,6 @@ ISO_2_lst = ["en",
              "sw",
              "zh"]
 
-args = parser.parse_args()
-lang = args.lang
-bit = args.bit
-nsamples = args.nsamples
 ISO_3 = ISO_3_lst[lang_lst.index(lang)]
 print(f"lang {lang} bit {bit}")
 

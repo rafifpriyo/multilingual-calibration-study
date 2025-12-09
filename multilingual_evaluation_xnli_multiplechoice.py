@@ -91,12 +91,14 @@ from lm_eval import simple_evaluate
 import argparse
 
 parser = argparse.ArgumentParser("args_gptq")
+parser.add_argument("--model_id", type=str)
 parser.add_argument("--quantization_technique", type=str)
 parser.add_argument("--lang", type=str)
 parser.add_argument("--bit", type=int)
 parser.add_argument("--nsamples", type=int, choices=[None, 128, 512])
 args = parser.parse_args()
 quantization_technique = args.quantization_technique
+model_id = args.model_id
 lang = args.lang
 bit = args.bit
 nsamples = args.nsamples
@@ -110,7 +112,7 @@ batch_size = 4
 # bit = 32
 
 # Model
-model_id = "Qwen/Qwen3-1.7B"
+model_id = model_id
 tokenizer_id = model_id
 # lang = "Unquantized"
 lang = lang
