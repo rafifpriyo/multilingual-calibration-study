@@ -41,7 +41,7 @@ def main(args):
         importances[key] = torch.abs(importances[key])
     importances = filter_importances_dict(importances, configuration="mlp_atten_only")
     print("Making Quantization Configs")
-    model_info = load_model(args.model, args.checkpoints_dir)
+    model_info = load_model(args.model, args.checkpoints_dir, device_map=args.device)
     model, tokenizer = model_info["model"], model_info["tokenizer"] 
     if args.proportional_total_params:
         total_params = count_params(importances)
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     parser.add_argument("--ranking_type", type=str, default="feature_rank")
     parser.add_argument("--override_args_yaml", action="store_true")
     parser.add_argument("--force_recompute", action="store_true")
-    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--device", default="cpu")
     parser.add_argument("--proportional_total_params", action="store_true")
     args = parser.parse_args()
     args.unsupervised = True

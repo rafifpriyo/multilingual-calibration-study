@@ -15,8 +15,8 @@ def load_model(engine, checkpoints_dir, device_map = "cuda", full_32_precision=F
             base_model_name = engine.split("_")[0]
         loadstring = model_loadstring_dict[base_model_name] + "/" +  base_model_name
         tokenizer = AutoTokenizer.from_pretrained(loadstring)
-        model = AutoModelForCausalLM.from_pretrained(loadstring, device_map="cuda").to(device_map if device_map != "auto" else "cuda")
-        print("Base model loaded, now replacing with saved state dict.")
+        model = AutoModelForCausalLM.from_pretrained(loadstring, device_map=device_map).to(device_map if device_map != "auto" else "cuda")
+        print("Base mdodel loaded, now replacing with save state dict.")
         devices_mapper = {}
         for name, module in model.named_parameters():
           devices_mapper[name] = module.dtype
