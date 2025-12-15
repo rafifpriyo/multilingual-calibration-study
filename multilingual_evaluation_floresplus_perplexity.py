@@ -9,10 +9,11 @@ Original file is located at
 # INCLUDE
 
 > https://github.com/EleutherAI/lm-evaluation-harness/tree/main/lm_eval/tasks/include
-
-"""## import"""
+"""
+## import
 
 import os
+import ast
 from dotenv import load_dotenv
 
 import ruamel.yaml
@@ -62,10 +63,73 @@ eval_languages = ["arb_Arab", "eng_Latn", "cmn_Hans", "hin_Deva", "fra_Latn", "j
 for lang in eval_languages:
     import lm_eval
     import shutil
-    update_util_path = f"./flores_plus_utils.py"
-    util_source_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/c4/preprocess_c4.py')}"
+    update_util_path = f"./perplexity_utils_{lang}.py"
+    # util_source_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/c4/preprocess_c4.py')}"
+    update_util_file = '''
+import re
+import math
+import oss
 
-    shutil.copyfile(util_source_path, update_util_path)
+def c4_detokenizer(doc):
+    string = doc["text"]
+    # contractions
+    string = string.replace("s '", "s'")
+    string = re.sub(r"/' [0-9]/", r"/'[0-9]/", string)
+    # number separators
+    string = string.replace(" @-@ ", "-")
+    string = string.replace(" @,@ ", ",")
+    string = string.replace(" @.@ ", ".")
+    # punctuation
+    string = string.replace(" : ", ": ")
+    string = string.replace(" ; ", "; ")
+    string = string.replace(" . ", ". ")
+    string = string.replace(" ! ", "! ")
+    string = string.replace(" ? ", "? ")
+    string = string.replace(" , ", ", ")
+    # double brackets
+    string = re.sub(r"\\(\\s*([^\\)]*?)\\s*\\)", r"(\\1)", string)
+    string = re.sub(r"\\[\\s*([^\\]]*?)\\s*\\]", r"[\\1]", string)
+    string = re.sub(r"{]\\s*([^}]*?)\\s*}", r"{\\1}", string)
+    string = re.sub(r"\\"\\s*([^\\"]*?)\\s*\\"", r'"\\1"', string)
+    string = re.sub(r"'\\s*([^']*?)\\s*'", r"'\\1'", string)
+    # miscellaneous
+    string = string.replace("= = = =", "====")
+    string = string.replace("= = =", "===")
+    string = string.replace("= =", "==")
+    string = string.replace(" " + chr(176) + " ", chr(176))
+    string = string.replace(" \\n", "\\n")
+    string = string.replace("\\n ", "\\n")
+    string = string.replace(" N ", " 1 ")
+    string = string.replace(" 's", "'s")
+
+    return string
+
+
+def process_results(doc, results):
+    (loglikelihood,) = results
+    # IMPORTANT: wikitext counts number of words in *original doc before detokenization*
+    _words = len(re.split(r"\\s+", doc["text"]))
+    _bytes = len(doc["text"].encode("utf-8"))
+    if math.isnan(loglikelihood):
+      loglikelihood = 0
+      _words = 0
+      _bytes = 0
+    with open(os.path.dirname(__file__) + "/list_loglikelihood_''' + lang + '''.txt", "a") as f:
+      f.write(str((loglikelihood, _words)) + "\\n")
+    return {
+        "word_perplexity": (loglikelihood, _words),
+        "byte_perplexity": (loglikelihood, _bytes),
+        "bits_per_byte": (loglikelihood, _bytes),
+    }
+'''
+
+    """# Parameter"""
+    with open(update_util_path, 'w') as f:
+        data = yaml.load(update_util_file)
+        yaml.dump(data, f)
+    with open(f"{os.path.dirname(__file__)}/list_loglikelihood_{lang}.txt", "w") as f:
+        pass
+    # shutil.copyfile(util_source_path, update_util_path)
 
     update_yaml_path = f"./flores_plus-custom_{lang}.yaml"
     # with open(update_yaml_path, 'r') as f:
@@ -81,8 +145,8 @@ output_type: loglikelihood_rolling
 training_split: null
 test_split: devtest
 doc_to_text: ""
-doc_to_target: !function flores_plus_utils.c4_detokenizer
-process_results: !function flores_plus_utils.process_results
+doc_to_target: !function perplexity_utils_{lang}.c4_detokenizer
+process_results: !function perplexity_utils_{lang}.process_results
 should_decontaminate: true
 doc_to_decontamination_query: "{{text}}"
 metric_list:
@@ -355,6 +419,10 @@ if __name__ == "__main__":
     with wandb.init(
         entity=ENTITY, project=PROJECT, config=wandb_config, name=wandb_runname
     ) as run:
+        # Log Artifact
+        artifact = wandb.Artifact(name=f"{wandb_runname}-result", type="eval-result")
+        artifact.add_file(local_path=f"./{output_result_bnb}", name=f"{wandb_runname}-result.json")
+
         # Log Accuracy
         clean_result = make_table(result)[0]
         for task_name, lang_eval, task_version, word_acc, word_stderr, byte_acc, byte_stderr, bit_acc, bit_stderr in clean_result:
@@ -365,12 +433,17 @@ if __name__ == "__main__":
             run.summary[f"{task_name}_bit_acc_{lang_eval}"] = bit_acc
             run.summary[f"{task_name}_bit_stderr_{lang_eval}"] = bit_stderr
 
+            with open(os.path.dirname(__file__) + f"/list_loglikelihood_{lang_eval}.txt", "r") as f:
+                count_nan = 0
+                for line in f:
+                    loglikelihood = ast.literal_eval(line)
+                    if loglikelihood[1] == 0:
+                        count_nan += 1
+                run.summary[f"{task_name}_nan_count_{lang_eval}"] = count_nan
+            artifact.add_file(local_path=(os.path.dirname(__file__) + f"/list_loglikelihood_{lang_eval}.txt"), name=f"list-loglikelihood-{lang_eval}-result.txt")
         # Log Result
         # columns = ["Eval Dataset", "Result"]
         # data = [["xnli", pprint.pformat(result)]]
         # table = wandb.Table(data=data, columns=columns)
         # run.log({"result": table})
-
-        artifact = wandb.Artifact(name=f"{wandb_runname}-result", type="eval-result")
-        artifact.add_file(local_path=f"./{output_result_bnb}", name=f"{wandb_runname}-result.json")
         artifact.save()
