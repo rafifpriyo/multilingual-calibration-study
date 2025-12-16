@@ -125,8 +125,7 @@ def process_results(doc, results):
 
     """# Parameter"""
     with open(update_util_path, 'w') as f:
-        data = yaml.load(update_util_file)
-        yaml.dump(data, f)
+        f.write(update_util_file)
     with open(f"{os.path.dirname(__file__)}/list_loglikelihood_{lang}.txt", "w") as f:
         pass
     # shutil.copyfile(util_source_path, update_util_path)
