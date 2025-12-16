@@ -1,5 +1,6 @@
 #!/bin/bash
 
+cp ./.env ./slim-llm
 cp ./run.py ./slim-llm
 cp ./datautils.py ./slim-llm
 cp ./auto.py ./AutoGPTQ/auto_gptq/modeling

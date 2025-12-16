@@ -90,7 +90,9 @@ dataset_id = "openlanguagedata/flores_plus"
 quantization_technique = "gptq"
 bit_lst = [4, 8]
 
-output_path_gptq = f"./{model_id.split('/')[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
+if not os.path.exists("./output"):
+    os.makedirs("./output")
+output_path_gptq = f"./output/{model_id.split('/')[-1]}_{quantization_technique}_{{bit}}bit_{{lang}}"
 
 ## Calibration size
 SYMMETRY = False

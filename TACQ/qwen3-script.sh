@@ -105,6 +105,7 @@ do
                         quantized_model_names+=("$quantized_model_name")
 
                         pixi run python -m multilingual_huggingface_tacq \
+                            --model_id ${loadstring}/${model_name} \
                             --lang ${dataset} \
                             --bit ${wbits} \
                             --nsamples ${nsamples} \
