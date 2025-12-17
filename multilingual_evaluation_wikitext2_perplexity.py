@@ -264,7 +264,6 @@ def eval_model(model, tasks, device='cpu'):
             # "xwinograd",
             #  "xstorycloze"],
       device=device,
-      limit=1000,
       num_fewshot=num_shot,
       apply_chat_template = apply_chat_template,
     #   gen_kwargs={'temperature': 0},

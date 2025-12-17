@@ -341,7 +341,7 @@ if __name__ == "__main__":
     result = eval_model(model, device=device_str)
 
     print(f"Finish Evaluating")
-    print(f"Time span: {time.time()}-{start_time}")
+    print(f"Time span: {time.time()-start_time}")
 
     import pickle
     with open(output_result_bnb, 'wb') as file:
