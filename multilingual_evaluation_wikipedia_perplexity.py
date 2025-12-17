@@ -115,7 +115,7 @@ def process_results(doc, results):
       _words = 0
       _bytes = 0
     with open(os.path.dirname(__file__) + "/list_loglikelihood_''' + lang + '''.txt", "a") as f:
-      f.write(str((loglikelihood, _words)) + "\\n")
+      f.write(str(("{:.3e}".format(loglikelihood), _words)) + "\\n")
     return {
         "word_perplexity": (loglikelihood, _words),
         "byte_perplexity": (loglikelihood, _bytes),
