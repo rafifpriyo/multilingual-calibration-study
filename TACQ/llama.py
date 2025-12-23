@@ -43,6 +43,8 @@ def get_llama(model):
     if model.endswith("lora_model"):
         model = AutoPeftModelForCausalLM.from_pretrained(model, torch_dtype='auto')
         model = model.merge_and_unload()
+    elif "gemma" in model:
+        model = AutoModelForCausalLM.from_pretrained(model, torch_dtype='auto')
     elif "Qwen" in model:
         model = AutoModelForCausalLM.from_pretrained(model, torch_dtype='auto')
     else:
@@ -65,12 +67,17 @@ def llama_sequential(model, dataloader, dev):
     if getattr(model.model, 'rotary_emb', None):
         # for llama3 and qwen models when transformers >=4.45.0
         model.model.rotary_emb = model.model.rotary_emb.to(dev)
+    
+    if getattr(model.model, 'rotary_emb_local', None):
+        # for gemma3 models
+        model.model.rotary_emb_local = model.model.rotary_emb_local.to(dev)
 
     dtype = next(iter(model.parameters())).dtype
     inps_list = []            # list of hidden states from the 1st layer
     attn_masks_list = []      # list of attention masks
     position_ids_list = []    # list of position IDs
     position_embeddings_list = []    # list of embeddings position
+    position_embeddings_local_list = []    # list of embeddings position
     # Only caches the tokenized inputs from the first layer?
     class Catcher(nn.Module):
         def __init__(self, module):
@@ -80,7 +87,11 @@ def llama_sequential(model, dataloader, dev):
             inps_list.append(inp.detach())
             attn_masks_list.append(kwargs.get('attention_mask', None))
             position_ids_list.append(kwargs.get('position_ids', None))
-            position_embeddings_list.append(kwargs.get('position_embeddings', None))
+            pos_emb_global = kwargs.get('position_embeddings', None)
+            if not pos_emb_global:
+                pos_emb_global = kwargs.get('position_embeddings_global', None)
+            position_embeddings_list.append(pos_emb_global)
+            position_embeddings_local_list.append(kwargs.get('position_embeddings_local', None))
             raise ValueError
     layers[0] = Catcher(layers[0])
     for batch in dataloader:
@@ -93,6 +104,10 @@ def llama_sequential(model, dataloader, dev):
     if getattr(model.model, 'rotary_emb', None):
         # for llama3 and qwen models when transformers >=4.45.0
         model.model.rotary_emb = model.model.rotary_emb.cpu()
+    
+    if getattr(model.model, 'rotary_emb_local', None):
+        # for gemma3 models when transformers >=4.45.0
+        model.model.rotary_emb_local = model.model.rotary_emb_local.cpu()
 
     layers[0] = layers[0].cpu()
     model.model.embed_tokens = model.model.embed_tokens.cpu()
@@ -185,7 +200,9 @@ def llama_sequential(model, dataloader, dev):
                 for j in range(len(dataloader)):
                     # outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
                     # We use the same inps because we are re-running the entire layer, but just collecting statistics from one matrix in the layer.
-                    if "Qwen3" in model._get_name():
+                    if "gemma" in model._get_name():
+                        outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings_global=position_embeddings_list[j], position_embeddings_local=position_embeddings_local_list[j])[0].detach()
+                    elif "Qwen3" in model._get_name():
                         outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings=position_embeddings_list[j])[0].detach()
                     else:
                         outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j])[0].detach()
@@ -215,7 +232,9 @@ def llama_sequential(model, dataloader, dev):
 
         for j in range(len(dataloader)):
             # outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
-            if "Qwen3" in model._get_name():
+            if "gemma" in model._get_name():
+                outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings_global=position_embeddings_list[j], position_embeddings_local=position_embeddings_local_list[j])[0].detach()
+            elif "Qwen3" in model._get_name():
                 outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings=position_embeddings_list[j])[0].detach()
             else:
                 outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j])[0].detach()
