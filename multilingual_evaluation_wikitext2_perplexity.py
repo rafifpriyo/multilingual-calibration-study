@@ -86,18 +86,18 @@ def wikitext_detokenizer(doc):
     string = string.replace(" ? ", "? ")
     string = string.replace(" , ", ", ")
     # double brackets
-    string = re.sub(r"\(\s*([^\)]*?)\s*\)", r"(\1)", string)
-    string = re.sub(r"\[\s*([^\]]*?)\s*\]", r"[\1]", string)
-    string = re.sub(r"{\s*([^}]*?)\s*}", r"{\1}", string)
-    string = re.sub(r"\"\s*([^\"]*?)\s*\"", r'"\1"', string)
-    string = re.sub(r"'\s*([^']*?)\s*'", r"'\1'", string)
+    string = re.sub(r"\\(\s*([^\\)]*?)\\s*\\)", r"(\\1)", string)
+    string = re.sub(r"\\[\s*([^\\]]*?)\\s*\\]", r"[\\1]", string)
+    string = re.sub(r"{\\s*([^}]*?)\\s*}", r"{\\1}", string)
+    string = re.sub(r"\\"\\s*([^\\"]*?)\\s*\\"", r'"\\1"', string)
+    string = re.sub(r"'\\s*([^']*?)\\s*'", r"'\\1'", string)
     # miscellaneous
     string = string.replace("= = = =", "====")
     string = string.replace("= = =", "===")
     string = string.replace("= =", "==")
     string = string.replace(" " + chr(176) + " ", chr(176))
-    string = string.replace(" \n", "\n")
-    string = string.replace("\n ", "\n")
+    string = string.replace(" \\n", "\\n")
+    string = string.replace("\\n ", "\\n")
     string = string.replace(" N ", " 1 ")
     string = string.replace(" 's", "'s")
 
@@ -113,7 +113,7 @@ def process_results(doc, results):
       loglikelihood = 0
       _words = 0
       _bytes = 0
-    with open(os.path.dirname(__file__) + "/list_loglikelihood_wikitext2'.txt", "a") as f:
+    with open(os.path.dirname(__file__) + "/list_loglikelihood_wikitext2.txt", "a") as f:
       f.write(str(("{:.3e}".format(loglikelihood), _words)) + "\\n")
     return {
         "word_perplexity": (loglikelihood, _words),
@@ -334,7 +334,7 @@ if __name__ == "__main__":
         tasks_values = [[]]
 
         for k, dic in sorted(file_json["results"].items()):
-            if "_" not in k:
+            if "wikitext" not in k:
                 continue
 
             version = file_json["versions"][k]
