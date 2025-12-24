@@ -16,7 +16,7 @@ from gptq import *
 from gptq.gptq import *
 from modelutils import *
 from quant import *
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, Gemma3ForCausalLM
 
 load_dotenv()
 
@@ -44,7 +44,7 @@ def get_llama(model):
         model = AutoPeftModelForCausalLM.from_pretrained(model, torch_dtype='auto')
         model = model.merge_and_unload()
     elif "gemma" in model:
-        model = AutoModelForCausalLM.from_pretrained(model, torch_dtype='auto')
+        model = Gemma3ForCausalLM.from_pretrained(model, torch_dtype='auto')
     elif "Qwen" in model:
         model = AutoModelForCausalLM.from_pretrained(model, torch_dtype='auto')
     else:
@@ -200,7 +200,7 @@ def llama_sequential(model, dataloader, dev):
                 for j in range(len(dataloader)):
                     # outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
                     # We use the same inps because we are re-running the entire layer, but just collecting statistics from one matrix in the layer.
-                    if "gemma" in model._get_name():
+                    if "Gemma3" in model._get_name():
                         outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings_global=position_embeddings_list[j], position_embeddings_local=position_embeddings_local_list[j])[0].detach()
                     elif "Qwen3" in model._get_name():
                         outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings=position_embeddings_list[j])[0].detach()
@@ -232,7 +232,7 @@ def llama_sequential(model, dataloader, dev):
 
         for j in range(len(dataloader)):
             # outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
-            if "gemma" in model._get_name():
+            if "Gemma3" in model._get_name():
                 outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings_global=position_embeddings_list[j], position_embeddings_local=position_embeddings_local_list[j])[0].detach()
             elif "Qwen3" in model._get_name():
                 outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings=position_embeddings_list[j])[0].detach()

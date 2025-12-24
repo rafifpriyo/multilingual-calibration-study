@@ -64,9 +64,9 @@ def get_model(model):
         else:
             model.seqlen = 2048
     elif "gemma" in model:
-        from transformers import AutoModelForCausalLM
+        from transformers import Gemma3ForCausalLM
 
-        model = AutoModelForCausalLM.from_pretrained(model, torch_dtype="auto")
+        model = Gemma3ForCausalLM.from_pretrained(model, torch_dtype="auto")
         model.seqlen = 2048
     elif "Qwen" in model:
         from transformers import AutoModelForCausalLM
