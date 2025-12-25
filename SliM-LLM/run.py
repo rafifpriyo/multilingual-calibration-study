@@ -55,7 +55,7 @@ def get_model(model):
 
         model = OPTForCausalLM.from_pretrained(model, torch_dtype="auto")
         model.seqlen = model.config.max_position_embeddings
-    elif "llama" in model:
+    elif "llama" in model.lower():
         from transformers import LlamaForCausalLM
 
         model = LlamaForCausalLM.from_pretrained(model, torch_dtype="auto")
@@ -68,7 +68,7 @@ def get_model(model):
 
         model = Gemma3ForCausalLM.from_pretrained(model, torch_dtype="auto")
         model.seqlen = 2048
-    elif "Qwen" in model:
+    elif "Qwen" in model or "aya" in model:
         from transformers import AutoModelForCausalLM
 
         model = AutoModelForCausalLM.from_pretrained(model, torch_dtype="auto")
@@ -105,10 +105,11 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
             and model.model.decoder.project_in
         ):
             model.model.decoder.project_in = model.model.decoder.project_in.to(dev)
-    elif "llama" in args.model:
+    elif "Llama" in args.model or "aya" in args.model:
         layers = model.model.layers
         model.model.embed_tokens = model.model.embed_tokens.to(dev)
         model.model.norm = model.model.norm.to(dev)
+        model.model.rotary_emb = model.model.rotary_emb.to(dev)
     elif "gemma" in args.model:
         layers = model.model.layers
         model.model.embed_tokens = model.model.embed_tokens.to(dev)
@@ -141,7 +142,7 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
             if "gemma" in args.model:
                 cache["position_embeddings_global"] = kwargs["position_embeddings_global"]
                 cache["position_embeddings_local"] = kwargs["position_embeddings_local"]
-            elif "Qwen" in args.model:
+            elif "Qwen" in args.model or "Llama" in args.model or "aya" in args.model:
                 cache["position_embeddings"] = kwargs["position_embeddings"]
             raise ValueError
 
@@ -167,9 +168,10 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
             and model.model.decoder.project_in
         ):
             model.model.decoder.project_in = model.model.decoder.project_in.cpu()
-    elif "llama" in args.model:
+    elif "Llama" in args.model or "aya" in args.model:
         model.model.embed_tokens = model.model.embed_tokens.cpu()
         model.model.norm = model.model.norm.cpu()
+        model.model.rotary_emb = model.model.rotary_emb.cpu()
     elif "gemma" in args.model:
         model.model.embed_tokens = model.model.embed_tokens.cpu()
         model.model.norm = model.model.norm.cpu()
@@ -232,7 +234,7 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
         for j in range(args.nsamples):
             if "gemma" in args.model:
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings_global=position_embeddings_global, position_embeddings_local=position_embeddings_local)[0]
-            elif "Qwen" in args.model:
+            elif "Qwen" in args.model or "Llama" in args.model or "aya" in args.model:
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings=position_embeddings)[0]
             else:
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
@@ -254,7 +256,7 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
             for j in tqdm.tqdm(range(args.nsamples), desc="Determining block precision..."):
                 if "gemma" in args.model:
                     outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings_global=position_embeddings_global, position_embeddings_local=position_embeddings_local)[0]
-                elif "Qwen" in args.model:
+                elif "Qwen" in args.model or "Llama" in args.model or "aya" in args.model:
                     outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings=position_embeddings)[0]
                 else:
                     outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
@@ -282,7 +284,7 @@ def quant_sequential(model, dataloader, dev, saved_block_precision):
         for j in range(args.nsamples):
             if "gemma" in args.model:
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings_global=position_embeddings_global, position_embeddings_local=position_embeddings_local)[0]
-            elif "Qwen" in args.model:
+            elif "Qwen" in args.model or "Llama" in args.model or "aya" in args.model:
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_embeddings=position_embeddings)[0]
             else:
                 outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask)[0]
@@ -322,7 +324,7 @@ def pack_model(model, save_path, bits, group_size, quantizers, block_bits):
         for name in block_bits[k]:
             modified_block_bits['model.layers.%d.%s' % (k, name)] = torch.Tensor(block_bits[k][name]).int()
 
-    if "llama" in args.model:
+    if "Llama" in args.model:
         model = LlamaGPTQForCausalLM(model, quantized=False, quantize_config=quantize_config)
         model.quantize([], scales, zeros, g_idxes, modified_block_bits)
         model.save_quantized(save_path, use_safetensors=False)

@@ -45,7 +45,7 @@ def get_llama(model):
         model = model.merge_and_unload()
     elif "gemma" in model:
         model = Gemma3ForCausalLM.from_pretrained(model, torch_dtype='auto')
-    elif "Qwen" in model:
+    elif "Qwen" in model or "aya" in args.model:
         model = AutoModelForCausalLM.from_pretrained(model, torch_dtype='auto')
     else:
         model = LlamaForCausalLM.from_pretrained(model, torch_dtype='auto')
@@ -202,7 +202,7 @@ def llama_sequential(model, dataloader, dev):
                     # We use the same inps because we are re-running the entire layer, but just collecting statistics from one matrix in the layer.
                     if "Gemma3" in model._get_name():
                         outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings_global=position_embeddings_list[j], position_embeddings_local=position_embeddings_local_list[j])[0].detach()
-                    elif "Qwen3" in model._get_name():
+                    elif "Qwen3" in model._get_name() or "Llama" in model._get_name() or "Cohere" in model._get_name():
                         outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings=position_embeddings_list[j])[0].detach()
                     else:
                         outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j])[0].detach()
@@ -234,7 +234,7 @@ def llama_sequential(model, dataloader, dev):
             # outs[j] = layer(inps[j].unsqueeze(0), attention_mask=attention_mask, position_ids=position_ids)[0]
             if "Gemma3" in model._get_name():
                 outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings_global=position_embeddings_list[j], position_embeddings_local=position_embeddings_local_list[j])[0].detach()
-            elif "Qwen3" in model._get_name():
+            elif "Qwen3" in model._get_name() or "Llama" in model._get_name() or "Cohere" in model._get_name():
                 outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j], position_embeddings=position_embeddings_list[j])[0].detach()
             else:
                 outs_list[j] = layer(inps_list[j], attention_mask=attn_masks_list[j], position_ids=position_ids_list[j])[0].detach()

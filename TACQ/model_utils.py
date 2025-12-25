@@ -3,7 +3,7 @@ from peft import AutoPeftModelForCausalLM
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 import torch
 
-model_loadstring_dict = {"gemma-3-4b-it": "google", "Qwen3-8B": "Qwen", "Qwen3-4B": "Qwen", "Qwen3-1.7B": "Qwen", "Qwen2.5-32B-Instruct": "Qwen", "Qwen2.5-7B": "Qwen", "Qwen2.5-7B-Instruct": "Qwen", "gemma-2b": "google", "gpt2-large": "openai-community", "Llama-2-7b-hf": "meta-llama", "Meta-Llama-3-8B-Instruct": "meta-llama", "Meta-Llama-3-8B": "meta-llama", "Mistral-7B-v0.3": "mistralai", "Meta-Llama-3-70B-Instruct": "meta-llama"}
+model_loadstring_dict = {"aya-expanse-8b": "CohereLabs", "Llama-3.1-8B-Instruct": "meta-llama", "gemma-3-4b-it": "google", "Qwen3-8B": "Qwen", "Qwen3-4B": "Qwen", "Qwen3-1.7B": "Qwen", "Qwen2.5-32B-Instruct": "Qwen", "Qwen2.5-7B": "Qwen", "Qwen2.5-7B-Instruct": "Qwen", "gemma-2b": "google", "gpt2-large": "openai-community", "Llama-2-7b-hf": "meta-llama", "Meta-Llama-3-8B-Instruct": "meta-llama", "Meta-Llama-3-8B": "meta-llama", "Mistral-7B-v0.3": "mistralai", "Meta-Llama-3-70B-Instruct": "meta-llama"}
 
 def load_model(engine, checkpoints_dir, device_map = "cuda", full_32_precision=False, brainfloat=False):
     """Can handle many types of models."""
