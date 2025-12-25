@@ -298,7 +298,7 @@ def lm_eval_vllm(model, tokenizer, device: str):
   return VLLM(
     pretrained = model,
     tokenizer = tokenizer,
-    max_model_len=max_model_len,
+#    max_model_len=max_model_len,
     trust_remote_code = True,
     device = device,
     dtype = "float16",
