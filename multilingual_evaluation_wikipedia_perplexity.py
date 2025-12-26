@@ -283,7 +283,7 @@ def lm_eval_vllm(model, tokenizer, device: str):
 #    max_model_len=max_model_len,
     trust_remote_code = True,
     device = device,
-    dtype = "float16",
+    dtype = "auto",
     batch_size=batch_size,
     enable_thinking = enable_thinking,
     gpu_memory_utilization=0.75,
