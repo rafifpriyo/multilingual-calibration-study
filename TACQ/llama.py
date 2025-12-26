@@ -83,6 +83,7 @@ def llama_sequential(model, dataloader, dev):
         def __init__(self, module):
             super().__init__()
             self.module = module
+            self.attention_type = "full_attention"
         def forward(self, inp, **kwargs):
             inps_list.append(inp.detach())
             attn_masks_list.append(kwargs.get('attention_mask', None))
