@@ -195,11 +195,11 @@ cuda = "12.8"
 dependency-overrides = { numpy = "==1.26.4" }
 
 [feature.gpu.pypi-dependencies]
-torch = { version = ">=2.8.0", index = "https://download.pytorch.org/whl/cu128"}
+torch = { version = "==2.8.0", index = "https://download.pytorch.org/whl/cu128"}
 torchvision = { version = ">=0.22.0", index = "https://download.pytorch.org/whl/cu128" }
 
 [feature.cpu.pypi-dependencies]
-torch = { version = ">=2.7.0", index = "https://download.pytorch.org/whl/cpu"}
+torch = { version = "==2.8.0", index = "https://download.pytorch.org/whl/cpu"}
 torchvision = { version = ">=0.22.0", index = "https://download.pytorch.org/whl/cpu" }
 
 [feature.cpu.pypi-options]
