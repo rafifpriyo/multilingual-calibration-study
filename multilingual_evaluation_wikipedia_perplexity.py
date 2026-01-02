@@ -187,7 +187,7 @@ print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit - {nsamples}
 # Eval Language on the Task's Yaml Section
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
-batch_size = 4
+batch_size = 1
 # bit = 32
 
 # Model
@@ -280,13 +280,14 @@ def lm_eval_vllm(model, tokenizer, device: str):
   return VLLM(
     pretrained = model,
     tokenizer = tokenizer,
-#    max_model_len=max_model_len,
     trust_remote_code = True,
     device = device,
-    dtype = "auto",
+    dtype = "bfloat16" if "aya-expanse" not in args.model_id and args.quantization_technique != "gptq" else "float16",
     batch_size=batch_size,
     enable_thinking = enable_thinking,
-    gpu_memory_utilization=0.75,
+    enforce_eager=True,
+    max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
+    gpu_memory_utilization=0.55,
 )
 
 def eval_model(model, tasks, task_manager, device='cpu'):
