@@ -57,88 +57,44 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-# eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "ko", "el", "id", "sw", "te", "ne", "mg"]   # FULL
-# eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ko", "bn", "id", "sw", "yo"]   # LITE
-eval_languages = ["en", "de", "zh", "my", "id", "sw", "yo"]
+eval_languages = ["eng", "tam", "zhoblimp"]
 
-for lang in eval_languages:
-    import lm_eval
-    update_util_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/{lang}/temp_utils.py')}"
-    update_util_file = '''
-from functools import partial
+# update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/belebele/_default_template_yaml')}"
+# # with open(update_yaml_path, 'r') as f:
+# #     print(f"Yaml file content: {f.read()}")
+# update_yaml_file = f"""
+# dataset_path: facebook/belebele
+# fewshot_config:
+#   sampler: first_n
+# output_type: multiple_choice
+# description: 'Answer directly with the choice: A, B, C or D without explanation as shown in the example\n'
+# should_decontaminate: true
+# doc_to_decontamination_query: "{{question}}"
+# doc_to_text: "P: {{flores_passage}}\nQ: {{question.strip()}}\nA: {{mc_answer1}}\nB: {{mc_answer2}}\nC: {{mc_answer3}}\nD: {{mc_answer4}}\nAnswer:"
+# doc_to_choice: [" A", " B", " C", " D"]
+# doc_to_target: "{{['1', '2', '3', '4'].index(correct_answer_num)}}"
+# metric_list:
+#   - metric: acc
+#     aggregation: mean
+#     higher_is_better: true
+#   - metric: acc_norm
+#     aggregation: mean
+#     higher_is_better: true
+# metadata:
+#   version: 0.0
+# """
 
-def format_input(example):
-    return f'{example["question"].strip()}\\nA. {example["option_a"]}\\nB. {example["option_b"]}\\nC. {example["option_c"]}\\n D. {example["option_d"]}\\nAnswer: '
+# """# Parameter"""
+# with open(update_yaml_path, 'w') as f:
+#     data = yaml.load(update_yaml_file)
+#     yaml.dump(data, f)
+# # with open(update_yaml_path, 'r') as f:
+# #     print(f"Yaml file content After overwrite: {f.read()}")
 
-def _choice_from_int(example):
-    if example["answer"] == "A":
-        return 0
-    elif example["answer"] == "B":
-        return 1
-    elif example["answer"] == "C":
-        return 2
-    elif example["answer"] == "D":
-        return 3
-
-doc_to_text = format_input
-doc_to_target = _choice_from_int
-'''
-    with open(update_util_path, 'w') as f:
-        f.write(update_util_file)
-    # with open(update_util_path, 'r') as f:
-    #     print(f.read())
-    
-    update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/{lang}/_{lang}_template_yaml')}"
-    # with open(update_yaml_path, 'r') as f:
-    #     print(f"Yaml file content: {f.read()}")
-    update_yaml_file = f"""
-dataset_path: CohereForAI/Global-MMLU-Lite
-dataset_name: {lang}
-test_split: test
-fewshot_split: dev
-fewshot_config:
-    sampler: default
-output_type: multiple_choice
-description: 'Answer directly with the choice: A, B, C or D without explanation as shown in the example\n'
-doc_to_text: !function temp_utils.doc_to_text
-doc_to_choice: [" A", " B", " C", " D"]
-doc_to_target: !function temp_utils.doc_to_target
-gen_prefix: "Answer: "
-metric_list:
-  - metric: acc
-    aggregation: mean
-    higher_is_better: true
-metadata:
-    version: 1.0
-"""
-
-    """# Parameter"""
-    with open(update_yaml_path, 'w') as f:
-        data = yaml.load(update_yaml_file)
-        yaml.dump(data, f)
-    # with open(update_yaml_path, 'r') as f:
-    #     print(f"Yaml file content After overwrite: {f.read()}")
-
-    for file in [f for f in os.listdir(os.path.dirname(update_yaml_path))]:
-        if not file.endswith('.yaml'):
-            continue
-            
-        file_name = os.path.join(os.path.dirname(update_yaml_path), file)
-        with open(file_name, 'r') as f:
-            data = yaml.load(f)
-        if 'description' in data:
-            data['description'] = 'Answer directly with the choice: A, B, C or D without explanation as shown in the example\n'
-            with open(file_name, 'w') as f:
-                yaml.dump(data, f)
-        if 'aggregate_metric_list' in data:
-            data['aggregate_metric_list'][0] = {'metric': 'acc', 'weight_by_size': True}
-            with open(file_name, 'w') as f:
-                yaml.dump(data, f)
-
-import importlib
-importlib.reload(lm_eval)
-from lm_eval.models.vllm_causallms import VLLM
-from lm_eval import simple_evaluate
+# import importlib
+# importlib.reload(lm_eval)
+# from lm_eval.models.vllm_causallms import VLLM
+# from lm_eval import simple_evaluate
 
 # Argument
 import argparse
@@ -174,7 +130,7 @@ bit = bit
 default_yaml = False
 
 # Evaluation
-evaluation_dataset = "globalmmlulite"
+evaluation_dataset = "multiblimp"
 num_shot = 5
 apply_chat_template = True
 enable_thinking = False
@@ -266,10 +222,10 @@ def lm_eval_vllm(model, tokenizer, device: str):
     #autogptq=True,
 )
 
-def eval_model(model, device='cpu'):
+def eval_model(model, tasks, device='cpu'):
   return simple_evaluate(
       model=model,
-      tasks=[f"global_mmlu_{lang}" for lang in eval_languages],
+      tasks=tasks,
             # "xwinograd",
             #  "xstorycloze"],
       device=device,
@@ -296,7 +252,9 @@ if __name__ == "__main__":
     else:
         model = lm_eval_vllm(output_huggingface_gptq, tokenizer_id, device=device_str)
 
-    result = eval_model(model, device=device_str)
+    tasks = [f"multiblimp_{lang}" for lang in eval_languages if lang != 'zhoblimp']
+    tasks.append("zhoblimp")
+    result = eval_model(model, tasks, device=device_str)
 
     print(f"Finish Evaluating")
     print(f"Time span: {time.time()-start_time}")
@@ -338,8 +296,10 @@ if __name__ == "__main__":
             percent = k == "squad2"
 
             task_index = 0
-            task = "".join(k.split("_")[:2]) + "lite"
+            task = k.split("_")[0]
             lang = k.split("_")[-1]
+            if task == 'zhoblimp':
+                task = 'multiblimp'
             acc, stderr = 0, 0
             for m, v in dic.items():
                 # print(m, dic)

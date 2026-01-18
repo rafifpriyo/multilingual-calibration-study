@@ -19,7 +19,7 @@ import ruamel.yaml
 yaml = ruamel.yaml.YAML()
 
 import torch
-# from lm_eval.models.huggingface import HFLM
+from lm_eval.models.huggingface import HFLM
 from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
 
@@ -57,7 +57,8 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["Arabic", "Chinese", "French", "Hindi", "Japanese", "Indonesian", "Tamil", "Malay", "Korean", "Telugu", "Nepali", "Albanian"]
+# eval_languages = ["Arabic", "Chinese", "French", "Hindi", "Japanese", "Indonesian", "Tamil", "Malay", "Korean", "Telugu", "Nepali", "Albanian"]
+eval_languages = ["Dutch", "German", "Chinese", "Indonesian", "Malay", "Tagalog", "Tamil", "Telugu", "Malayalam"]
 
 for lang in eval_languages:
     import lm_eval
@@ -261,6 +262,7 @@ wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{l
 def lm_eval_vllm(model, tokenizer, device: str):
 #   return HFLM(
   return VLLM(
+    # non-gptq uses VLLM
     pretrained = model,
     tokenizer = tokenizer,
     trust_remote_code = True,
@@ -271,6 +273,9 @@ def lm_eval_vllm(model, tokenizer, device: str):
     enforce_eager=False,
     max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
     gpu_memory_utilization=0.56,
+    ## gptq uses HFLM
+    #max_length=40960 if "aya-expanse" not in args.model_id else 8192,
+    #autogptq=True,
 )
 
 def eval_model(model, device='cpu'):

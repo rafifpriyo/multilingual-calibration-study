@@ -20,7 +20,7 @@ import ruamel.yaml
 yaml = ruamel.yaml.YAML()
 
 import torch
-# from lm_eval.models.huggingface import HFLM
+from lm_eval.models.huggingface import HFLM
 from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
 
@@ -58,12 +58,17 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["arb_Arab", "eng_Latn", "cmn_Hans", "hin_Deva", "fra_Latn", "jpn_Jpan", "zsm_Latn", "kor_Hang", "tam_Taml", "ind_Latn", "swh_Latn", "tel_Telu", "npi_Deva", "yor_Latn"]
+# eval_languages = ["arb_Arab", "eng_Latn", "cmn_Hans", "hin_Deva", "fra_Latn", "jpn_Jpan", "zsm_Latn", "kor_Hang", "tam_Taml", "ind_Latn", "swh_Latn", "tel_Telu", "npi_Deva", "yor_Latn"]
+eval_languages = ["afr_Latn", "dan_Latn", "deu_Latn", "eng_Latn", "fao_Latn", "isl_Latn", "lim_Latn", "ltz_Latn", "nld_Latn", "nno_Latn", "nob_Latn", "swe_Latn", "tpi_Latn", "ydd_Hebr"]
+eval_languages.extend(["kan_Knda", "mal_Mlym", "tam_Taml", "tel_Telu"])
+eval_languages.extend(["ace_Latn", "ban_Latn", "bjn_Latn", "bug_Latn", "ceb_Latn", "fij_Latn", "ilo_Latn", "ind_Latn", "jav_Latn", "min_Latn", "plt_Latn", "mri_Latn", "pag_Latn", "smo_Latn", "sun_Latn", "fil_Latn", "war_Latn", "zsm_Latn"])
+eval_languages.extend(["bem_Latn", "cjk_Latn", "ibo_Latn", "kam_Latn", "kik_Latn", "kin_Latn", "kmb_Latn", "ktu_Latn", "lin_Latn", "lua_Latn", "lug_Latn", "nso_Latn", "nya_Latn", "run_Latn", "sna_Latn", "sot_Latn", "ssw_Latn", "swh_Latn", "tsn_Latn", "tso_Latn", "tum_Latn", "umb_Latn", "xho_Latn", "yor_Latn", "zul_Latn"])
+eval_languages.extend(["bod_Tibt", "dzo_Tibt", "kac_Latn", "lus_Latn", "mni_Beng", "mya_Mymr", "yue_Hant", "cmn_Hans"])
 
 for lang in eval_languages:
     import lm_eval
     import shutil
-    update_util_path = f"./perplexity_utils_{lang}.py"
+    update_util_path = f"./perplexity_utils_floresplus_{lang}.py"
     # util_source_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/c4/preprocess_c4.py')}"
     update_util_file = '''
 import re
@@ -110,11 +115,11 @@ def process_results(doc, results):
     # IMPORTANT: wikitext counts number of words in *original doc before detokenization*
     _words = len(re.split(r"\\s+", doc["text"]))
     _bytes = len(doc["text"].encode("utf-8"))
-    if math.isnan(loglikelihood):
+    if math.isnan(loglikelihood) or math.isinf(loglikelihood):
       loglikelihood = 0
       _words = 0
       _bytes = 0
-    with open(os.path.dirname(__file__) + "/list_loglikelihood_''' + lang + '''.txt", "a") as f:
+    with open(os.path.dirname(__file__) + "/list_loglikelihood_floresplus_''' + lang + '''.txt", "a") as f:
       f.write(str(("{:.3e}".format(loglikelihood), _words)) + "\\n")
     return {
         "word_perplexity": (loglikelihood, _words),
@@ -126,7 +131,7 @@ def process_results(doc, results):
     """# Parameter"""
     with open(update_util_path, 'w') as f:
         f.write(update_util_file)
-    with open(f"{os.path.dirname(__file__)}/list_loglikelihood_{lang}.txt", "w") as f:
+    with open(f"{os.path.dirname(__file__)}/list_loglikelihood_floresplus_{lang}.txt", "w") as f:
         pass
     # shutil.copyfile(util_source_path, update_util_path)
 
@@ -296,6 +301,7 @@ import os
 def lm_eval_vllm(model, tokenizer, device: str):
 #   return HFLM(
   return VLLM(
+    # Non-gptq using VLLM
     pretrained = model,
     tokenizer = tokenizer,
     trust_remote_code = True,
@@ -306,6 +312,9 @@ def lm_eval_vllm(model, tokenizer, device: str):
     enforce_eager=False,
     max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
     gpu_memory_utilization=0.55,
+    ## gptq using HFLM
+    #max_length=40960 if "aya-expanse" not in args.model_id else 8192,
+    #autogptq=True,
 )
 
 def eval_model(model, device='cpu'):
@@ -433,14 +442,14 @@ if __name__ == "__main__":
             run.summary[f"{task_name}_bit_acc_{lang_eval}"] = bit_acc
             run.summary[f"{task_name}_bit_stderr_{lang_eval}"] = bit_stderr
 
-            with open(os.path.dirname(__file__) + f"/list_loglikelihood_{lang_eval}.txt", "r") as f:
+            with open(os.path.dirname(__file__) + f"/list_loglikelihood_floresplus_{lang_eval}.txt", "r") as f:
                 count_nan = 0
                 for line in f:
                     loglikelihood = ast.literal_eval(line)
                     if loglikelihood[1] == 0:
                         count_nan += 1
                 run.summary[f"{task_name}_nan_count_{lang_eval}"] = count_nan
-            artifact.add_file(local_path=(os.path.dirname(__file__) + f"/list_loglikelihood_{lang_eval}.txt"), name=f"list-loglikelihood-{lang_eval}-result.txt")
+            artifact.add_file(local_path=(os.path.dirname(__file__) + f"/list_loglikelihood_floresplus_{lang_eval}.txt"), name=f"list-loglikelihood-{lang_eval}-result.txt")
         # Log Result
         # columns = ["Eval Dataset", "Result"]
         # data = [["xnli", pprint.pformat(result)]]

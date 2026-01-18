@@ -20,7 +20,7 @@ import ruamel.yaml
 yaml = ruamel.yaml.YAML()
 
 import torch
-# from lm_eval.models.huggingface import HFLM
+from lm_eval.models.huggingface import HFLM
 from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
 
@@ -58,12 +58,13 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "ko", "ta", "id", "sw", "te", "ne", "yo"]
+# eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "ko", "ta", "id", "sw", "te", "ne", "yo"]
+eval_languages = ["en", "de", "nl", "bo", "my", "zh", "id", "tl", "ms", "ml", "ta", "te", "sw", "lg", "yo"]
 
 for lang in eval_languages:
     import lm_eval
     import shutil
-    update_util_path = f"./perplexity_utils_{lang}.py"
+    update_util_path = f"./perplexity_utils_wikipedia_{lang}.py"
     # util_source_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/c4/preprocess_c4.py')}"
     update_util_file = '''
 import re
@@ -110,11 +111,11 @@ def process_results(doc, results):
     # IMPORTANT: wikitext counts number of words in *original doc before detokenization*
     _words = len(re.split(r"\\s+", doc["text"]))
     _bytes = len(doc["text"].encode("utf-8"))
-    if math.isnan(loglikelihood):
+    if math.isnan(loglikelihood) or math.isinf(loglikelihood):
       loglikelihood = 0
       _words = 0
       _bytes = 0
-    with open(os.path.dirname(__file__) + "/list_loglikelihood_''' + lang + '''.txt", "a") as f:
+    with open(os.path.dirname(__file__) + "/list_loglikelihood_wikipedia_''' + lang + '''.txt", "a") as f:
       f.write(str(("{:.3e}".format(loglikelihood), _words)) + "\\n")
     return {
         "word_perplexity": (loglikelihood, _words),
@@ -126,7 +127,7 @@ def process_results(doc, results):
     """# Parameter"""
     with open(update_util_path, 'w') as f:
         f.write(update_util_file)
-    with open(f"{os.path.dirname(__file__)}/list_loglikelihood_{lang}.txt", "w") as f:
+    with open(f"{os.path.dirname(__file__)}/list_loglikelihood_wikipedia_{lang}.txt", "w") as f:
         pass
     # shutil.copyfile(util_source_path, update_util_path)
 
@@ -278,6 +279,7 @@ import os
 def lm_eval_vllm(model, tokenizer, device: str):
 #   return HFLM(
   return VLLM(
+    # non-gptq uses VLLM
     pretrained = model,
     tokenizer = tokenizer,
     trust_remote_code = True,
@@ -288,6 +290,9 @@ def lm_eval_vllm(model, tokenizer, device: str):
     enforce_eager=True,
     max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
     gpu_memory_utilization=0.55,
+    ## gptq uses HFLM
+    #max_length=40960 if "aya-expanse" not in args.model_id else 8192,
+    #autogptq=True,
 )
 
 def eval_model(model, tasks, task_manager, device='cpu'):
@@ -432,14 +437,14 @@ if __name__ == "__main__":
             run.summary[f"{task_name}_bit_acc_{lang_eval}"] = bit_acc
             run.summary[f"{task_name}_bit_stderr_{lang_eval}"] = bit_stderr
 
-            with open(os.path.dirname(__file__) + f"/list_loglikelihood_{lang_eval}.txt", "r") as f:
+            with open(os.path.dirname(__file__) + f"/list_loglikelihood_wikipedia_{lang_eval}.txt", "r") as f:
                 count_nan = 0
                 for line in f:
                     loglikelihood = ast.literal_eval(line)
                     if loglikelihood[1] == 0:
                         count_nan += 1
                 run.summary[f"{task_name}_nan_count_{lang_eval}"] = count_nan
-            artifact.add_file(local_path=(os.path.dirname(__file__) + f"/list_loglikelihood_{lang_eval}.txt"), name=f"list-loglikelihood-{lang_eval}-result.txt")
+            artifact.add_file(local_path=(os.path.dirname(__file__) + f"/list_loglikelihood_wikipedia_{lang_eval}.txt"), name=f"list-loglikelihood-{lang_eval}-result.txt")
 
         # Log Result
         # columns = ["Eval Dataset", "Result"]

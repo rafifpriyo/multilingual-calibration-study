@@ -59,7 +59,8 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 # eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "ko", "el", "id", "sw", "te", "ne", "mg"]   # FULL
 # eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ko", "bn", "id", "sw", "yo"]   # LITE
-eval_languages = ["en", "de", "zh", "my", "id", "sw", "yo"]
+# eval_languages = ["en", "de", "zh", "my", "id", "sw", "yo"]
+eval_languages = ["de", "my"]
 
 for lang in eval_languages:
     import lm_eval
@@ -174,7 +175,7 @@ bit = bit
 default_yaml = False
 
 # Evaluation
-evaluation_dataset = "globalmmlulite"
+evaluation_dataset = "globalmmlulite-add"
 num_shot = 5
 apply_chat_template = True
 enable_thinking = False
