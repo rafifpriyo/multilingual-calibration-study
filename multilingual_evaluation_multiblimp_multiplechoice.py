@@ -60,7 +60,13 @@ PROJECT = "calibration-on-quantized-multilingual"
 eval_languages = ["eng", "tam", "idn", "swa", "zhoblimp"]
 
 import lm_eval
-update_util_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'ttasks/multiblimp/swa_utils.py')}"
+
+# zhoblimp yet implemented in lm-eval==0.4.9.1
+import shutil
+if not os.path.exists(f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/zhoblimp')}"):
+    shutil.copytree(f"{os.path.dirname(__file__)}/zhoblimp", f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/zhoblimp')}")
+
+update_util_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/multiblimp/swa_utils.py')}"
 update_util_file = '''
 from functools import partial
 
@@ -83,7 +89,7 @@ task: multiblimp_swa
 dataset_path: json
 dataset_kwargs:
   data_files:
-    train: {__file__}/syntactic_generalization_multilingual/suites/swahili-*.json
+    train: {os.path.dirname(__file__)}/syntactic_generalization_multilingual/suites/swahili-*.json
 output_type: multiple_choice
 test_split: train
 doc_to_text: ""
@@ -116,7 +122,7 @@ task: multiblimp_idn
 dataset_path: json
 dataset_kwargs:
   data_files:
-    train: {__file__}/BHASA/lindsea/id/syntax/*.jsonl
+    train: {os.path.dirname(__file__)}/BHASA/lindsea/id/syntax/*.jsonl
 output_type: multiple_choice
 test_split: train
 doc_to_text: ""
@@ -352,7 +358,7 @@ if __name__ == "__main__":
         tasks_values = [[]]
 
         for k, dic in sorted(file_json["results"].items()):
-            if "_" not in k:
+            if "_" not in k and k != "zhoblimp":
                 continue
 
             version = file_json["versions"][k]
