@@ -122,7 +122,7 @@ test_split: train
 doc_to_text: ""
 target_delimiter: ""
 doc_to_target: 0
-doc_to_choice: "{{[correct, wrong]}}"
+doc_to_choice: "{{{{[correct, wrong]}}}}"
 num_fewshot: 0
 metric_list:
   - metric: acc

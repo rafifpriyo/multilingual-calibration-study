@@ -62,17 +62,19 @@ eval_languages = ["eng_Latn", "nld_Latn", "deu_Latn", "mal_Mlym", "tam_Taml", "t
 update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/belebele/_default_template_yaml')}"
 # with open(update_yaml_path, 'r') as f:
 #     print(f"Yaml file content: {f.read()}")
+# Quadruple curly brackets {} is because yaml in python is reducing one curly each pair.
 update_yaml_file = f"""
 dataset_path: facebook/belebele
 fewshot_config:
   sampler: first_n
 output_type: multiple_choice
-description: 'Answer directly with the choice: A, B, C or D without explanation as shown in the example\n'
+description: 'Answer directly with the choice: A, B, C or D without explanation\n'
 should_decontaminate: true
-doc_to_decontamination_query: "{{question}}"
-doc_to_text: "P: {{flores_passage}}\nQ: {{question.strip()}}\nA: {{mc_answer1}}\nB: {{mc_answer2}}\nC: {{mc_answer3}}\nD: {{mc_answer4}}\nAnswer:"
+doc_to_decontamination_query: "{{{{question}}}}"
+doc_to_text: "P: {{{{flores_passage}}}}\nQ: {{{{question.strip()}}}}\nA: {{{{mc_answer1}}}}\nB: {{{{mc_answer2}}}}\nC: {{{{mc_answer3}}}}\nD: {{{{mc_answer4}}}}\n"
 doc_to_choice: [" A", " B", " C", " D"]
-doc_to_target: "{{['1', '2', '3', '4'].index(correct_answer_num)}}"
+doc_to_target: "{{{{['1', '2', '3', '4'].index(correct_answer_num)}}}}"
+gen_prefix: "Answer: "
 metric_list:
   - metric: acc
     aggregation: mean
@@ -131,7 +133,7 @@ default_yaml = False
 
 # Evaluation
 evaluation_dataset = "belebele"
-num_shot = 5
+num_shot = None
 apply_chat_template = True
 enable_thinking = False
 
