@@ -372,9 +372,9 @@ if __name__ == "__main__":
             acc, stderr = 0, 0
             for m, v in dic.items():
                 # print(m, dic)
-                if m.endswith("_stderr,none"):
+                if m.endswith("_norm_stderr,none"):
                     stderr = v
-                if m.endswith("acc,none"):
+                if m.endswith("acc_norm,none"):
                     acc = v
                 if m == 'alias':
                     continue
