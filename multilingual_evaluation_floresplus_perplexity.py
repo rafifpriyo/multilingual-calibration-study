@@ -350,8 +350,9 @@ if __name__ == "__main__":
 
     result = eval_model(model, device=device_str)
 
+    exec_time = time.time() - start_time
     print(f"Finish Evaluating")
-    print(f"Time span: {time.time()-start_time}")
+    print(f"Time span: {exec_time}")
 
     import pickle
     with open(output_result_bnb, 'wb') as file:
@@ -450,6 +451,8 @@ if __name__ == "__main__":
                         count_nan += 1
                 run.summary[f"{task_name}_nan_count_{lang_eval}"] = count_nan
             artifact.add_file(local_path=(os.path.dirname(__file__) + f"/list_loglikelihood_floresplus_{lang_eval}.txt"), name=f"list-loglikelihood-{lang_eval}-result.txt")
+        
+        run.config["Execution Time"] = exec_time
         # Log Result
         # columns = ["Eval Dataset", "Result"]
         # data = [["xnli", pprint.pformat(result)]]

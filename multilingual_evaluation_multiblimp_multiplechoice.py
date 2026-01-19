@@ -57,44 +57,93 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["eng", "tam", "zhoblimp"]
+eval_languages = ["eng", "tam", "idn", "swa", "zhoblimp"]
 
-# update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/belebele/_default_template_yaml')}"
-# # with open(update_yaml_path, 'r') as f:
-# #     print(f"Yaml file content: {f.read()}")
-# update_yaml_file = f"""
-# dataset_path: facebook/belebele
-# fewshot_config:
-#   sampler: first_n
-# output_type: multiple_choice
-# description: 'Answer directly with the choice: A, B, C or D without explanation as shown in the example\n'
-# should_decontaminate: true
-# doc_to_decontamination_query: "{{question}}"
-# doc_to_text: "P: {{flores_passage}}\nQ: {{question.strip()}}\nA: {{mc_answer1}}\nB: {{mc_answer2}}\nC: {{mc_answer3}}\nD: {{mc_answer4}}\nAnswer:"
-# doc_to_choice: [" A", " B", " C", " D"]
-# doc_to_target: "{{['1', '2', '3', '4'].index(correct_answer_num)}}"
-# metric_list:
-#   - metric: acc
-#     aggregation: mean
-#     higher_is_better: true
-#   - metric: acc_norm
-#     aggregation: mean
-#     higher_is_better: true
-# metadata:
-#   version: 0.0
-# """
+import lm_eval
+update_util_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'ttasks/multiblimp/swa_utils.py')}"
+update_util_file = '''
+from functools import partial
 
-# """# Parameter"""
-# with open(update_yaml_path, 'w') as f:
-#     data = yaml.load(update_yaml_file)
-#     yaml.dump(data, f)
-# # with open(update_yaml_path, 'r') as f:
-# #     print(f"Yaml file content After overwrite: {f.read()}")
+def _choice_from_example(example):
+    return [example['0'][0] + " " + example['1'][0], example['0'][1] + " " + example['1'][1]]
 
-# import importlib
-# importlib.reload(lm_eval)
-# from lm_eval.models.vllm_causallms import VLLM
-# from lm_eval import simple_evaluate
+doc_to_choice = _choice_from_example
+'''
+with open(update_util_path, 'w') as f:
+    f.write(update_util_file)
+# with open(update_util_path, 'r') as f:
+#     print(f.read())
+
+# Add Swahili yaml  # Download the data first from the github
+update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/multiblimp/multiblimp_swa.yaml')}"
+# with open(update_yaml_path, 'r') as f:
+#     print(f"Yaml file content: {f.read()}")
+update_yaml_file = f"""
+task: multiblimp_swa
+dataset_path: json
+dataset_kwargs:
+  data_files:
+    train: {__file__}/syntactic_generalization_multilingual/suites/swahili-*.json
+output_type: multiple_choice
+test_split: train
+doc_to_text: ""
+target_delimiter: ""
+doc_to_target: 0
+doc_to_choice: !function swa_utils.doc_to_choice
+num_fewshot: 0
+metric_list:
+  - metric: acc
+    aggregation: mean
+    higher_is_better: true
+  - metric: acc_norm
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 0
+"""
+
+"""# Parameter"""
+with open(update_yaml_path, 'w') as f:
+    data = yaml.load(update_yaml_file)
+    yaml.dump(data, f)
+
+# Add Swahili yaml  # Download the data first from the github
+update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/multiblimp/multiblimp_idn.yaml')}"
+# with open(update_yaml_path, 'r') as f:
+#     print(f"Yaml file content: {f.read()}")
+update_yaml_file = f"""
+task: multiblimp_idn
+dataset_path: json
+dataset_kwargs:
+  data_files:
+    train: {__file__}/BHASA/lindsea/id/syntax/*.jsonl
+output_type: multiple_choice
+test_split: train
+doc_to_text: ""
+target_delimiter: ""
+doc_to_target: 0
+doc_to_choice: "{{[correct, wrong]}}"
+num_fewshot: 0
+metric_list:
+  - metric: acc
+    aggregation: mean
+    higher_is_better: true
+  - metric: acc_norm
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 0
+"""
+
+"""# Parameter"""
+with open(update_yaml_path, 'w') as f:
+    data = yaml.load(update_yaml_file)
+    yaml.dump(data, f)
+
+import importlib
+importlib.reload(lm_eval)
+from lm_eval.models.vllm_causallms import VLLM
+from lm_eval import simple_evaluate
 
 # Argument
 import argparse
@@ -131,7 +180,7 @@ default_yaml = False
 
 # Evaluation
 evaluation_dataset = "multiblimp"
-num_shot = 5
+num_shot = 0
 apply_chat_template = True
 enable_thinking = False
 
@@ -256,8 +305,9 @@ if __name__ == "__main__":
     tasks.append("zhoblimp")
     result = eval_model(model, tasks, device=device_str)
 
+    exec_time = time.time() - start_time
     print(f"Finish Evaluating")
-    print(f"Time span: {time.time()-start_time}")
+    print(f"Time span: {exec_time}")
 
     import pickle
     with open(output_result_bnb, 'wb') as file:
@@ -355,6 +405,7 @@ if __name__ == "__main__":
         for task_name, lang_eval, task_version, accuracy, stderr in clean_result:
             run.summary[f"{task_name}_acc_{lang_eval}"] = accuracy
             run.summary[f"{task_name}_stderr_{lang_eval}"] = stderr
+        run.config["Execution Time"] = exec_time
 
         # Log Result
         # columns = ["Eval Dataset", "Result"]

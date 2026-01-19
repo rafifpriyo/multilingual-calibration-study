@@ -311,8 +311,9 @@ if __name__ == "__main__":
 
     result = eval_model(model, device=device_str)
 
+    exec_time = time.time() - start_time
     print(f"Finish Evaluating")
-    print(f"Time span: {time.time()-start_time}")
+    print(f"Time span: {exec_time}")
 
     import pickle
     with open(output_result_bnb, 'wb') as file:
@@ -408,6 +409,7 @@ if __name__ == "__main__":
         for task_name, lang_eval, task_version, accuracy, stderr in clean_result:
             run.summary[f"{task_name}_acc_{lang_eval}"] = accuracy
             run.summary[f"{task_name}_stderr_{lang_eval}"] = stderr
+        run.config["Execution Time"] = exec_time
 
         # Log Result
         # columns = ["Eval Dataset", "Result"]
