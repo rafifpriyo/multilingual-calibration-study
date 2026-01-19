@@ -299,9 +299,8 @@ wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{l
 
 import os
 def lm_eval_vllm(model, tokenizer, device: str):
-#   return HFLM(
   return VLLM(
-    # Non-gptq using VLLM
+    # non-gptq uses VLLM
     pretrained = model,
     tokenizer = tokenizer,
     trust_remote_code = True,
@@ -309,12 +308,24 @@ def lm_eval_vllm(model, tokenizer, device: str):
     dtype = "bfloat16" if "aya-expanse" not in args.model_id and args.quantization_technique != "gptq" else "float16",
     batch_size=batch_size,
     enable_thinking = enable_thinking,
-    enforce_eager=False,
+    enforce_eager=True,
     max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
-    gpu_memory_utilization=0.55,
-    ## gptq using HFLM
-    #max_length=40960 if "aya-expanse" not in args.model_id else 8192,
-    #autogptq=True,
+    gpu_memory_utilization=0.56,
+)
+
+def lm_eval_hflm(model, tokenizer, device: str):
+  return HFLM(
+    # non-gptq uses VLLM
+    pretrained = model,
+    tokenizer = tokenizer,
+    trust_remote_code = True,
+    device = device,
+    dtype = "bfloat16" if "aya-expanse" not in args.model_id and args.quantization_technique != "gptq" else "float16",
+    batch_size=batch_size,
+    enable_thinking = enable_thinking,
+    # gptq uses HFLM
+    max_length=40960 if "aya-expanse" not in args.model_id else 8192,
+    autogptq=True,
 )
 
 def eval_model(model, device='cpu'):
@@ -345,6 +356,8 @@ if __name__ == "__main__":
 
     if quantization_technique == "Unquantized":
         model = lm_eval_vllm(model_id, tokenizer_id, device=device_str)
+    elif quantization_technique == "gptq":
+        model = lm_eval_hflm(output_huggingface_gptq, tokenizer_id, device=device_str)
     else:
         model = lm_eval_vllm(output_huggingface_gptq, tokenizer_id, device=device_str)
 
