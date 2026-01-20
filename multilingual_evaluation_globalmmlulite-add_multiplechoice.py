@@ -62,6 +62,12 @@ PROJECT = "calibration-on-quantized-multilingual"
 # eval_languages = ["en", "de", "zh", "my", "id", "sw", "yo"]
 eval_languages = ["de", "my"]
 
+if "my" in eval_languages:
+    import shutil
+    if not os.path.exists(f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}"):
+        os.makedirs(f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}")
+    shutil.copytree(f"{__file__}/global_mmlu/default/my", f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}")
+
 for lang in eval_languages:
     import lm_eval
     update_util_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/{lang}/temp_utils.py')}"
