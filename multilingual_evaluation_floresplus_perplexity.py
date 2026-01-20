@@ -149,8 +149,8 @@ output_type: loglikelihood_rolling
 training_split: null
 test_split: devtest
 doc_to_text: ""
-doc_to_target: !function perplexity_utils_{lang}.c4_detokenizer
-process_results: !function perplexity_utils_{lang}.process_results
+doc_to_target: !function perplexity_utils_floresplus_{lang}.c4_detokenizer
+process_results: !function perplexity_utils_floresplus_{lang}.process_results
 should_decontaminate: true
 doc_to_decontamination_query: "{{{{text}}}}"
 metric_list:
@@ -325,13 +325,14 @@ def lm_eval_hflm(model, tokenizer, device: str):
     enable_thinking = enable_thinking,
     # gptq uses HFLM
     max_length=40960 if "aya-expanse" not in args.model_id else 8192,
-    autogptq=True,
+    gptqmodel=True,
 )
 
-def eval_model(model, device='cpu'):
+def eval_model(model, tasks, device='cpu'):
   return simple_evaluate(
       model=model,
-      tasks=[f"flores_plus_{lang}" for lang in eval_languages],
+    #   tasks=[f"flores_plus_{lang}" for lang in eval_languages],
+      tasks=tasks,
       task_manager=task_manager,
             # "xwinograd",
             #  "xstorycloze"],
@@ -361,7 +362,17 @@ if __name__ == "__main__":
     else:
         model = lm_eval_vllm(output_huggingface_gptq, tokenizer_id, device=device_str)
 
-    result = eval_model(model, device=device_str)
+    result_dict = {}
+    for lang in eval_languages:
+        tasks = [f"flores_plus_{lang}"]
+        result = eval_model(model, tasks, device_str=device_str)
+
+        for key in result.keys():
+            if key not in result_dict:
+                result_dict[key] = result[key]
+            elif isinstance(result_dict[key], dict):
+                result_dict[key] = result_dict[key] | result[key]
+    result = result_dict
 
     exec_time = time.time() - start_time
     print(f"Finish Evaluating")

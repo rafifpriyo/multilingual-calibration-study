@@ -59,6 +59,7 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 eval_languages = ["eng_Latn", "nld_Latn", "deu_Latn", "mal_Mlym", "tam_Taml", "tel_Telu", "ind_Latn", "tgl_Latn", "zsm_Latn", "swh_Latn", "yor_Latn", "lug_Latn", "bod_Tibt", "mya_Mymr", "zho_Hans"]
 
+import lm_eval
 update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/belebele/_default_template_yaml')}"
 # with open(update_yaml_path, 'r') as f:
 #     print(f"Yaml file content: {f.read()}")
@@ -232,7 +233,7 @@ def lm_eval_hflm(model, tokenizer, device: str):
     enable_thinking = enable_thinking,
     # gptq uses HFLM
     max_length=40960 if "aya-expanse" not in args.model_id else 8192,
-    autogptq=True,
+    gptqmodel=True,
 )
 
 def eval_model(model, device='cpu'):
@@ -311,7 +312,7 @@ if __name__ == "__main__":
 
             task_index = 0
             task = k.split("_")[0]
-            lang = "_".join(k.split("_")[-2])
+            lang = "_".join(k.split("_")[:-2])
             acc, stderr = 0, 0
             for m, v in dic.items():
                 # print(m, dic)

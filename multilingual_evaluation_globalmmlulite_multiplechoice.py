@@ -274,7 +274,7 @@ def lm_eval_hflm(model, tokenizer, device: str):
     enable_thinking = enable_thinking,
     # gptq uses HFLM
     max_length=40960 if "aya-expanse" not in args.model_id else 8192,
-    autogptq=True,
+    gptqmodel=True,
 )
 
 def eval_model(model, device='cpu'):
