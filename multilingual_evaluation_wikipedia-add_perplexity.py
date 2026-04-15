@@ -144,8 +144,8 @@ training_split:
 fewshot_split:
 test_split: train
 doc_to_text: ""
-doc_to_target: !function perplexity_utils_{lang}.c4_detokenizer
-process_results: !function perplexity_utils_{lang}.process_results
+doc_to_target: !function perplexity_utils_wikipedia_{lang}.c4_detokenizer
+process_results: !function perplexity_utils_wikipedia_{lang}.process_results
 should_decontaminate: true
 doc_to_decontamination_query: "{{text}}"
 metric_list:

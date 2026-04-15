@@ -63,10 +63,10 @@ PROJECT = "calibration-on-quantized-multilingual"
 eval_languages = ["de", "my"]
 
 if "my" in eval_languages:
+    import lm_eval
     import shutil
     if not os.path.exists(f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}"):
-        os.makedirs(f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}")
-    shutil.copytree(f"{__file__}/global_mmlu/default/my", f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}")
+        shutil.copytree(f"{os.path.dirname(__file__)}/global_mmlu/default/my", f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}")
 
 for lang in eval_languages:
     import lm_eval
@@ -254,7 +254,7 @@ wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{l
 
 """# Function"""
 
-def lm_eval_hflm(model, tokenizer, device: str):
+def lm_eval_vllm(model, tokenizer, device: str):
   return VLLM(
     # non-gptq uses VLLM
     pretrained = model,
@@ -269,7 +269,7 @@ def lm_eval_hflm(model, tokenizer, device: str):
     gpu_memory_utilization=0.56,
 )
 
-def lm_eval_vllm(model, tokenizer, device: str):
+def lm_eval_hflm(model, tokenizer, device: str):
   return HFLM(
     # non-gptq uses VLLM
     pretrained = model,

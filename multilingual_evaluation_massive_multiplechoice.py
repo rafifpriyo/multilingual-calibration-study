@@ -10,6 +10,7 @@ Original file is located at
 
 > https://github.com/EleutherAI/lm-evaluation-harness/tree/main/lm_eval/tasks/global_mmlu/default
 
+"""
 """## import"""
 
 import os
@@ -19,8 +20,8 @@ import ruamel.yaml
 yaml = ruamel.yaml.YAML()
 
 import torch
-# from lm_eval.models.huggingface import HFLM
 import lm_eval
+from lm_eval.models.huggingface import HFLM
 from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
 
@@ -79,7 +80,7 @@ for scenario in list_scenario:
 for intent in _INTENTS:
   dict_scenario[intent.split("_")[0]].add(intent)
 
-update_util_path = f"./utils.py"
+update_util_path = f"./massive_utils.py"
 update_util_file = '''
 from functools import partial
 
@@ -98,7 +99,7 @@ _INTENTS = ['datetime_query', 'iot_hue_lightchange', 'transport_ticket', 'takeaw
             'iot_coffee', 'music_query', 'play_podcasts', 'lists_query']
 
 def _intent_from_int(example):
-    return int(example['intent'])
+    return _INTENTS[int(example['intent'])]
 
 def format_cot_example(example, including_answer=True):
     prompt = 'Utterance:\\n'
@@ -106,7 +107,7 @@ def format_cot_example(example, including_answer=True):
     prompt += question + '\\n'
 
     if including_answer:
-        prompt += 'Answer: '
+        prompt += 'Answer: ' + _intent_from_int(example)
     else:
         prompt += 'Answer: '
 
@@ -119,11 +120,11 @@ doc_to_target = _intent_from_int
 '''
 with open(update_util_path, 'w') as f:
     f.write(update_util_file)
-with open(update_util_path, 'r') as f:
-    print(f.read())
+# with open(update_util_path, 'r') as f:
+#     print(f.read())
 
 new_line = '\n'
-eval_languages = ['en-US', 'id-ID', 'ta-IN', 'sw-KE', 'vi-VN', 'ar-SA', 'zh-CN']
+eval_languages = ['en-US', 'id-ID', 'ta-IN', 'sw-KE', 'zh-CN']
 for lang in eval_languages:
     update_yaml_path = f"./massive-custom-{lang}.yaml"
     update_yaml_file = f"""
@@ -135,14 +136,12 @@ fewshot_split: train
 output_type: multiple_choice
 description: "You are a home assistant AI that help classify user intent from text.
 Use the examples below to understand the pattern.
-Choose a single-word intent that best captures the primary purpose of the query. 
-If multiple intents are present, select the most dominant or urgent one. 
-Use only the following intent categories for the topic. 
-Answer only with the sub-intent detailed below without explanation
+Choose from the following options that best represent user's intent without explanation.
+The sub-words represent a scenario followed by an intent. 
 {new_line.join([f'''- {scenario}: {', '.join(list(dict_scenario[scenario]))}''' for scenario in list_scenario])}"
-doc_to_text: !function utils.doc_to_text
+doc_to_text: !function massive_utils.doc_to_text
 doc_to_choice: {_INTENTS}
-doc_to_target: !function utils.doc_to_target
+doc_to_target: !function massive_utils.doc_to_target
 gen_prefix: "Answer: "
 metric_list:
   - metric: acc
@@ -201,7 +200,7 @@ print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit - {nsamples}
 # Eval Language on the Task's Yaml Section
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
-batch_size = 4
+batch_size = 1
 # bit = 32
 
 # Model
@@ -288,22 +287,39 @@ wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{l
 """# Function"""
 
 def lm_eval_vllm(model, tokenizer, device: str):
-#   return HFLM(
   return VLLM(
+    # non-gptq uses VLLM
     pretrained = model,
     tokenizer = tokenizer,
     trust_remote_code = True,
     device = device,
-    dtype = "float16",
+    dtype = "bfloat16" if "aya-expanse" not in args.model_id and args.quantization_technique != "gptq" else "float16",
     batch_size=batch_size,
     enable_thinking = enable_thinking,
-    gpu_memory_utilization=0.75,
+    enforce_eager=True,
+    max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
+    gpu_memory_utilization=0.56,
 )
 
-def eval_model(model, device='cpu'):
+def lm_eval_hflm(model, tokenizer, device: str):
+  return HFLM(
+    # non-gptq uses VLLM
+    pretrained = model,
+    tokenizer = tokenizer,
+    trust_remote_code = True,
+    device = device,
+    dtype = "bfloat16" if "aya-expanse" not in args.model_id and args.quantization_technique != "gptq" else "float16",
+    batch_size=batch_size,
+    enable_thinking = enable_thinking,
+    # gptq uses HFLM
+    max_length=40960 if "aya-expanse" not in args.model_id else 8192,
+    gptqmodel=True,
+)
+
+def eval_model(model, tasks, device='cpu'):
   return simple_evaluate(
       model=model,
-      tasks=[f"massive_intent_classifier_{lang}" for lang in eval_languages],
+      tasks=tasks,
       task_manager=task_manager,
             # "xwinograd",
             #  "xstorycloze"],
@@ -313,7 +329,7 @@ def eval_model(model, device='cpu'):
     #   gen_kwargs={'temperature': 0},
       predict_only=False,
       log_samples=False,
-      write_out=False,
+      write_out=True,
       batch_size=batch_size,
       random_seed=1234,
   )
@@ -328,13 +344,26 @@ if __name__ == "__main__":
 
     if quantization_technique == "Unquantized":
         model = lm_eval_vllm(model_id, tokenizer_id, device=device_str)
+    elif quantization_technique == "gptq":
+        model = lm_eval_hflm(output_huggingface_gptq, tokenizer_id, device=device_str)
     else:
         model = lm_eval_vllm(output_huggingface_gptq, tokenizer_id, device=device_str)
 
-    result = eval_model(model, device=device_str)
+    result_dict = {}
+    for lang in eval_languages:
+        tasks = [f"massive_intent_classifier_{lang}"]
+        result = eval_model(model, tasks, device_str=device_str)
 
+        for key in result.keys():
+            if key not in result_dict:
+                result_dict[key] = result[key]
+            elif isinstance(result_dict[key], dict):
+                result_dict[key] = result_dict[key] | result[key]
+    result = result_dict
+
+    exec_time = time.time() - start_time
     print(f"Finish Evaluating")
-    print(f"Time span: {time.time()}-{start_time}")
+    print(f"Time span: {exec_time}")
 
     import pickle
     with open(output_result_bnb, 'wb') as file:
@@ -430,6 +459,7 @@ if __name__ == "__main__":
         for task_name, lang_eval, task_version, accuracy, stderr in clean_result:
             run.summary[f"{task_name}_acc_{lang_eval}"] = accuracy
             run.summary[f"{task_name}_stderr_{lang_eval}"] = stderr
+        run.config["Execution Time"] = exec_time
 
         # Log Result
         # columns = ["Eval Dataset", "Result"]

@@ -23,6 +23,8 @@ import torch
 from lm_eval.models.huggingface import HFLM
 from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
+import evaluate
+from datasets import load_dataset
 
 import numpy as np
 import pandas as pd
@@ -56,6 +58,7 @@ wandb.login(key=wandb_key)
 ENTITY = wandb.apis.PublicApi().default_entity
 PROJECT = "calibration-on-quantized-multilingual"
 
+
 # Argument
 import argparse
 
@@ -76,23 +79,24 @@ print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit - {nsamples}
 """## Modify task's yaml"""
 
 # eval_languages = ["arb_Arab", "eng_Latn", "cmn_Hans", "hin_Deva", "fra_Latn", "jpn_Jpan", "zsm_Latn", "kor_Hang", "tam_Taml", "ind_Latn", "swh_Latn", "tel_Telu", "npi_Deva", "yor_Latn"]
-eval_languages = ["afr_Latn", "dan_Latn", "deu_Latn", "eng_Latn", "fao_Latn", "isl_Latn", "lim_Latn", "ltz_Latn", "nld_Latn", "nno_Latn", "nob_Latn", "swe_Latn", "tpi_Latn", "ydd_Hebr"]
+eval_languages = ["eng_Latn", "swh_Latn", "cmn_Hans"]
+#eval_languages = ["afr_Latn", "dan_Latn", "deu_Latn", "fao_Latn", "isl_Latn", "lim_Latn", "ltz_Latn", "nld_Latn", "nno_Latn", "nob_Latn", "swe_Latn", "tpi_Latn", "ydd_Hebr"]
 eval_languages.extend(["kan_Knda", "mal_Mlym", "tam_Taml", "tel_Telu"])
 eval_languages.extend(["ace_Latn", "ban_Latn", "bjn_Latn", "bug_Latn", "ceb_Latn", "fij_Latn", "ilo_Latn", "ind_Latn", "jav_Latn", "min_Latn", "plt_Latn", "mri_Latn", "pag_Latn", "smo_Latn", "sun_Latn", "fil_Latn", "war_Latn", "zsm_Latn"])
-eval_languages.extend(["bem_Latn", "cjk_Latn", "ibo_Latn", "kam_Latn", "kik_Latn", "kin_Latn", "kmb_Latn", "ktu_Latn", "lin_Latn", "lua_Latn", "lug_Latn", "nso_Latn", "nya_Latn", "run_Latn", "sna_Latn", "sot_Latn", "ssw_Latn", "swh_Latn", "tsn_Latn", "tso_Latn", "tum_Latn", "umb_Latn", "xho_Latn", "yor_Latn", "zul_Latn"])
-eval_languages.extend(["bod_Tibt", "dzo_Tibt", "kac_Latn", "lus_Latn", "mni_Beng", "mya_Mymr", "yue_Hant", "cmn_Hans"])
+#eval_languages.extend(["bem_Latn", "cjk_Latn", "ibo_Latn", "kam_Latn", "kik_Latn", "kin_Latn", "kmb_Latn", "ktu_Latn", "lin_Latn", "lua_Latn", "lug_Latn", "nso_Latn", "nya_Latn", "run_Latn", "sna_Latn", "sot_Latn", "ssw_Latn", "swh_Latn", "tsn_Latn", "tso_Latn", "tum_Latn", "umb_Latn", "xho_Latn", "yor_Latn", "zul_Latn"])
+#eval_languages.extend(["bod_Tibt", "dzo_Tibt", "kac_Latn", "lus_Latn", "mni_Beng", "mya_Mymr", "yue_Hant"])
 
-for lang in eval_languages:
+for eval_lang in eval_languages:
     import lm_eval
     import shutil
-    update_util_path = f"./perplexity_utils_floresplus_{lang}.py"
+    update_util_path = f"./perplexity_utils_floresplus_{eval_lang}.py"
     # util_source_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/c4/preprocess_c4.py')}"
     update_util_file = '''
 import re
 import math
 import os
-# # Load model directly
-# from transformers import AutoTokenizer
+# Load model directly
+from transformers import AutoTokenizer
 
 def c4_detokenizer(doc):
     string = doc["text"]
@@ -132,16 +136,16 @@ def c4_detokenizer(doc):
 def process_results(doc, results):
     (loglikelihood,) = results
     # IMPORTANT: wikitext counts number of words in *original doc before detokenization*
-    # # Monkey patch token_ppl
-    # tokenizer = AutoTokenizer.from_pretrained("''' + model_id + '''")
-    # _words = len(tokenizer.encode(doc["text"]))
-    _words = len(re.split(r"\\s+", doc["text"]))
+    # Monkey patch token_ppl
+    tokenizer = AutoTokenizer.from_pretrained("''' + model_id + '''")
+    # _words = len(re.split(r"\\s+", doc["text"]))
+    _words = len(tokenizer.encode(doc["text"]))
     _bytes = len(doc["text"].encode("utf-8"))
     if math.isnan(loglikelihood) or math.isinf(loglikelihood):
       loglikelihood = 0
       _words = 0
       _bytes = 0
-    with open(os.path.dirname(__file__) + "/list_loglikelihood_floresplus_''' + lang + '''.txt", "a") as f:
+    with open(os.path.dirname(__file__) + "/list_loglikelihood_floresplus_''' + eval_lang + '''.txt", "a") as f:
       f.write(str(("{:.3e}".format(loglikelihood), _words)) + "\\n")
     return {
         "word_perplexity": (loglikelihood, _words),
@@ -153,26 +157,26 @@ def process_results(doc, results):
     """# Parameter"""
     with open(update_util_path, 'w') as f:
         f.write(update_util_file)
-    with open(f"{os.path.dirname(__file__)}/list_loglikelihood_floresplus_{lang}.txt", "w") as f:
+    with open(f"{os.path.dirname(__file__)}/list_loglikelihood_floresplus_{eval_lang}.txt", "w") as f:
         pass
     # shutil.copyfile(util_source_path, update_util_path)
 
-    update_yaml_path = f"./flores_plus-custom_{lang}.yaml"
+    update_yaml_path = f"./flores_plus-custom_{eval_lang}.yaml"
     # with open(update_yaml_path, 'r') as f:
     #     print(f"Yaml file content: {f.read()}")
     update_yaml_file = f"""
-task: flores_plus_{lang}
+task: flores_plus_{eval_lang}
 dataset_path: openlanguagedata/flores_plus
 dataset_kwargs:
   data_files:
-    devtest: devtest/{lang}.jsonl
+    devtest: devtest/{eval_lang}.jsonl
   verification_mode: "no_checks"
 output_type: loglikelihood_rolling
 training_split: null
 test_split: devtest
 doc_to_text: ""
-doc_to_target: !function perplexity_utils_floresplus_{lang}.c4_detokenizer
-process_results: !function perplexity_utils_floresplus_{lang}.process_results
+doc_to_target: !function perplexity_utils_floresplus_{eval_lang}.c4_detokenizer
+process_results: !function perplexity_utils_floresplus_{eval_lang}.process_results
 should_decontaminate: true
 doc_to_decontamination_query: "{{{{text}}}}"
 metric_list:
@@ -195,7 +199,7 @@ task_manager = lm_eval.tasks.TaskManager(
 )
 task_dict = lm_eval.tasks.get_task_dict(
     [
-        f"flores_plus_{lang}" for lang in eval_languages # A custom task
+        f"flores_plus_{eval_lang}" for eval_lang in eval_languages # A custom task
     ],
     task_manager # A task manager that allows lm_eval to
                  # load the task during evaluation.
@@ -229,7 +233,7 @@ bit = bit
 default_yaml = False
 
 # Evaluation
-evaluation_dataset = "floresplus"
+evaluation_dataset = "floresplus-evaluate"
 num_shot = None
 apply_chat_template = True
 enable_thinking = False
@@ -315,7 +319,7 @@ def lm_eval_vllm(model, tokenizer, device: str):
     enable_thinking = enable_thinking,
     enforce_eager=True,
     max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
-    gpu_memory_utilization=0.56,
+    gpu_memory_utilization=0.60,
 )
 
 def lm_eval_hflm(model, tokenizer, device: str):
@@ -333,10 +337,21 @@ def lm_eval_hflm(model, tokenizer, device: str):
     gptqmodel=True,
 )
 
+def evaluate_perplexity(model_id, tokenizer_id, ds, batch_size):
+  perplexity = evaluate.load(f"{os.path.join(os.path.dirname(evaluate.__file__), f'metrics/perplexity/perplexity.py')}", module_type="metric")
+
+  results = perplexity.compute(model_id=model_id,
+                            tokenizer_id=tokenizer_id,
+                            add_start_token=True,
+                            predictions=ds,
+                            batch_size=batch_size)
+  return results
+
+
 def eval_model(model, tasks, device='cpu'):
   return simple_evaluate(
       model=model,
-    #   tasks=[f"flores_plus_{lang}" for lang in eval_languages],
+      #tasks=[f"flores_plus_{lang}" for lang in eval_languages],
       tasks=tasks,
       task_manager=task_manager,
             # "xwinograd",
@@ -360,17 +375,28 @@ if __name__ == "__main__":
     # tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
     # model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device, token=hf_key)
 
-    if quantization_technique == "Unquantized":
+    if evaluation_dataset == "floresplus-evaluate":
+        pass
+    elif quantization_technique == "Unquantized":
         model = lm_eval_vllm(model_id, tokenizer_id, device=device_str)
     elif quantization_technique == "gptq":
         model = lm_eval_hflm(output_huggingface_gptq, tokenizer_id, device=device_str)
     else:
         model = lm_eval_vllm(output_huggingface_gptq, tokenizer_id, device=device_str)
-
     result_dict = {}
+
     for lang in eval_languages:
-        tasks = [f"flores_plus_{lang}"]
-        result = eval_model(model, tasks, device_str=device_str)
+        tasks=[f"flores_plus_{lang}"]
+
+        if evaluation_dataset == "floresplus-evaluate":
+            ds = load_dataset("openlanguagedata/flores_plus", lang, split="devtest", token=hf_key)
+            if quantization_technique == "Unquantized":
+                result_tmp = evaluate_perplexity(model_id, tokenizer_id, ds=ds['text'], batch_size=1)
+            else:
+                result_tmp = evaluate_perplexity(output_huggingface_gptq, tokenizer_id, ds=ds['text'], batch_size=1)
+            result = {lang: result_tmp}
+        else:
+            result = eval_model(model, tasks, device=device_str)
 
         for key in result.keys():
             if key not in result_dict:
@@ -453,7 +479,7 @@ if __name__ == "__main__":
     """# WandB Logging"""
 
     import pprint
-    print(make_table(result)[0])
+    #print(make_table(result)[0])
 
     with wandb.init(
         entity=ENTITY, project=PROJECT, config=wandb_config, name=wandb_runname
@@ -463,24 +489,10 @@ if __name__ == "__main__":
         artifact.add_file(local_path=f"./{output_result_bnb}", name=f"{wandb_runname}-result.json")
 
         # Log Accuracy
-        clean_result = make_table(result)[0]
-        for task_name, lang_eval, task_version, word_acc, word_stderr, byte_acc, byte_stderr, bit_acc, bit_stderr in clean_result:
-            run.summary[f"{task_name}_word_acc_{lang_eval}"] = word_acc
-            run.summary[f"{task_name}_word_stderr_{lang_eval}"] = word_stderr
-            run.summary[f"{task_name}_byte_acc_{lang_eval}"] = byte_acc
-            run.summary[f"{task_name}_byte_stderr_{lang_eval}"] = byte_stderr
-            run.summary[f"{task_name}_bit_acc_{lang_eval}"] = bit_acc
-            run.summary[f"{task_name}_bit_stderr_{lang_eval}"] = bit_stderr
-
-            with open(os.path.dirname(__file__) + f"/list_loglikelihood_floresplus_{lang_eval}.txt", "r") as f:
-                count_nan = 0
-                for line in f:
-                    loglikelihood = ast.literal_eval(line)
-                    if loglikelihood[1] == 0:
-                        count_nan += 1
-                run.summary[f"{task_name}_nan_count_{lang_eval}"] = count_nan
-            artifact.add_file(local_path=(os.path.dirname(__file__) + f"/list_loglikelihood_floresplus_{lang_eval}.txt"), name=f"list-loglikelihood-{lang_eval}-result.txt")
-        
+        for lang_eval, res in result.items():
+            run.summary[f"{evaluation_dataset.split('-')[0]}_token_perplexity_{lang_eval}"] = res["mean_perplexity"]
+            #run.summary[f"{evaluation_dataset.split('-')[0]}_token_acc_{lang_eval}"] = res["token_perplexity"]
+            run.summary[f"{evaluation_dataset.split('-')[0]}_nancount_{lang_eval}"] = len(res['mask_valid']) - sum(res["mask_valid"])
         run.config["Execution Time"] = exec_time
         # Log Result
         # columns = ["Eval Dataset", "Result"]

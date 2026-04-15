@@ -119,11 +119,35 @@ if __name__ == "__main__":
         """
 
         tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
-        model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device, token=hf_key)
+        # model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device, token=hf_key)
 
         # Load dataset.
-        ds = load_dataset(dataset_id, ISO_3, split="dev", token=hf_key)
-        ds = ds.shuffle(seed=42)
+        def prepare_calibration_dataset(model_id, nsamples, seed, seqlen):
+            from datasets import load_dataset
+            # use the parameters from script arguments
+            traindata = load_dataset(dataset_id, ISO_3, split="dev", token=hf_key)
+            # testdata = load_dataset('wikitext', 'wikitext-2-raw-v1', split='test')
+
+            from transformers import AutoTokenizer 
+            tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False if "aya" not in model_id else True)
+            trainenc = tokenizer("\n\n".join(traindata['text']), return_tensors='pt')
+            # testenc = tokenizer("\n\n".join(testdata['text']), return_tensors='pt')
+            import random
+            random.seed(seed)
+            trainloader = []
+            for _ in range(nsamples):
+                i = random.randint(0, trainenc.input_ids.shape[1] - seqlen - 1)
+                j = i + seqlen
+                inp = trainenc.input_ids[:, i:j]
+                tar = inp.clone()  #unshifted
+                tar[:, :-1] = -100  #only last token contributes to loss
+                trainloader.append(tokenizer.decode(inp, skip_special_tokens=True))
+            # return trainloader, testenc
+            return trainloader
+        
+        # ds = load_dataset(dataset_id, ISO_3, split="dev", token=hf_key)
+        # ds = ds.shuffle(seed=42)
+        train_loader = prepare_calibration_dataset(model_id, NUM_CALIBRATION_SAMPLES, 1234, MAX_SEQUENCE_LENGTH)
 
         def chat_template(text):
             return [
@@ -132,16 +156,16 @@ if __name__ == "__main__":
 
         # Preprocess the data into the format the model is trained with.
         def preprocess(example):
-            return {"text": tokenizer.apply_chat_template(chat_template(example["text"]), tokenize=False,)}
+            return {"text": tokenizer.apply_chat_template(chat_template(example), tokenize=False,)}
             # return {"text": example["text"]}
-        ds = ds.map(preprocess)
+        train_loader = list(map(preprocess, train_loader))
 
         """## GPTQ"""
 
         quant_config = QuantizeConfig(bits=bit, group_size=GROUP_SIZE, sym=SYMMETRY, lm_head=False, device=device)
         model = GPTQModel.load(model_id, quant_config, token=hf_key)
 
-        model.quantize(ds['text'][:NUM_CALIBRATION_SAMPLES], batch_size=1)
+        model.quantize(train_loader, batch_size=1)
         model.save(output_path_gptq.format(bit=bit, lang=lang))
 
         """# Upload to Huggingface"""

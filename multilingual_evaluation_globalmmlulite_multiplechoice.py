@@ -62,10 +62,10 @@ PROJECT = "calibration-on-quantized-multilingual"
 eval_languages = ["en", "de", "zh", "my", "id", "sw", "yo"]
 
 if "my" in eval_languages:
+    import lm_eval
     import shutil
     if not os.path.exists(f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}"):
-        os.makedirs(f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}")
-    shutil.copytree(f"{__file__}/global_mmlu/default/my", f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}")
+        shutil.copytree(f"{os.path.dirname(__file__)}/global_mmlu/default/my", f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/global_mmlu/default/my/')}")
 
 
 for lang in eval_languages:
@@ -74,8 +74,9 @@ for lang in eval_languages:
     update_util_file = '''
 from functools import partial
 
+# one my instance have no question, i.e. empty string
 def format_input(example):
-    return f'{example["question"].strip()}\\nA. {example["option_a"]}\\nB. {example["option_b"]}\\nC. {example["option_c"]}\\n D. {example["option_d"]}\\nAnswer: '
+    return f'{example["question"].strip() if example["question"] else ''}\\nA. {example["option_a"]}\\nB. {example["option_b"]}\\nC. {example["option_c"]}\\n D. {example["option_d"]}\\nAnswer: '
 
 def _choice_from_int(example):
     if example["answer"] == "A":
