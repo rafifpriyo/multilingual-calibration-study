@@ -391,9 +391,9 @@ if __name__ == "__main__":
         if evaluation_dataset == "floresplus-evaluate":
             ds = load_dataset("openlanguagedata/flores_plus", lang, split="devtest", token=hf_key)
             if quantization_technique == "Unquantized":
-                result_tmp = evaluate_perplexity(model_id, tokenizer_id, ds=ds['text'], batch_size=1)
+                result_tmp = evaluate_perplexity(model_id, tokenizer_id, ds=ds['text'], batch_size=batch_size)
             else:
-                result_tmp = evaluate_perplexity(output_huggingface_gptq, tokenizer_id, ds=ds['text'], batch_size=1)
+                result_tmp = evaluate_perplexity(output_huggingface_gptq, tokenizer_id, ds=ds['text'], batch_size=batch_size)
             result = {lang: result_tmp}
         else:
             result = eval_model(model, tasks, device=device_str)
