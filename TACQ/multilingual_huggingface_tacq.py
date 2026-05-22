@@ -27,6 +27,7 @@ parser.add_argument("--lang", type=str)
 parser.add_argument("--bit", type=str)
 parser.add_argument("--nsamples", type=int)
 parser.add_argument("--save_path", type=str)
+parser.add_argument("--seed", type=int, default=1234)
 
 """# Parameter"""
 
@@ -47,6 +48,7 @@ model_id = args.model_id
 lang = args.lang.split("_")[-1] if args.lang.startswith("flores") else args.lang 
 bit = int(args.bit[1:]) if args.bit.startswith("q") else int(args.bit)
 nsamples = args.nsamples
+random_seed = args.seed
 
 # Model
 model_id = model_id
@@ -98,7 +100,7 @@ NUM_CALIBRATION_SAMPLES=nsamples
 MAX_SEQUENCE_LENGTH=2048
 
 # huggingface
-output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}{'-128samples' if NUM_CALIBRATION_SAMPLES == 128 else ''}"
+output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}{'-128samples' if NUM_CALIBRATION_SAMPLES == 128 else ''}{('-' + str(random_seed) +'randomseed') if random_seed != 1234 else ''}"
 
 """# Looping"""
 

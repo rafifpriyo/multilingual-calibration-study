@@ -31,6 +31,7 @@ parser.add_argument("--model_id", type=str)
 parser.add_argument("--lang", type=str)
 parser.add_argument("--bit", type=int)
 parser.add_argument("--nsamples", type=int)
+parser.add_argument("--random_seed", type=int, default=1234)
 
 """# Parameter"""
 
@@ -51,6 +52,7 @@ model_id = args.model_id
 lang = args.lang
 bit = args.bit
 nsamples = args.nsamples
+random_seed = args.random_seed
 
 # Calibration Dataset
 # lang_lst = ["Estonian", "Haitian", "Indonesian", "Italian",
@@ -101,7 +103,7 @@ NUM_CALIBRATION_SAMPLES=nsamples
 MAX_SEQUENCE_LENGTH=2048
 
 # huggingface
-output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}{'-128samples' if NUM_CALIBRATION_SAMPLES == 128 else ''}"
+output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}bit-calibration-{{lang}}{'-128samples' if NUM_CALIBRATION_SAMPLES == 128 else ''}{('-' + str(random_seed) + 'randomseed') if random_seed != 1234 else ''}"
 
 """# Looping"""
 
@@ -147,7 +149,7 @@ if __name__ == "__main__":
         
         # ds = load_dataset(dataset_id, ISO_3, split="dev", token=hf_key)
         # ds = ds.shuffle(seed=42)
-        train_loader = prepare_calibration_dataset(model_id, NUM_CALIBRATION_SAMPLES, 1234, MAX_SEQUENCE_LENGTH)
+        train_loader = prepare_calibration_dataset(model_id, NUM_CALIBRATION_SAMPLES, random_seed, MAX_SEQUENCE_LENGTH)
 
         def chat_template(text):
             return [

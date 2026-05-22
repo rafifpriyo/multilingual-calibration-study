@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 
 import torch
 
+import random
 import numpy as np
 import pandas as pd
 
@@ -464,6 +465,10 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
     print(args)
 
     # Parameter
@@ -472,7 +477,7 @@ if __name__ == "__main__":
 
     # huggingface
     model_id = args.model
-    output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}-calibration-{{lang}}{{nsamples}}"
+    output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{{bit}}-calibration-{{lang}}{{nsamples}}{{random_seed}}"
 
     # get the block precision of the model
     # if the block precision does not exist, start Salience-Determined Bit Allocation
@@ -555,12 +560,12 @@ if __name__ == "__main__":
 
     """# Upload to Huggingface"""
 
-    create_repo(output_huggingface_gptq.format(bit=args.low_quant_method, lang=args.dataset_subset, nsamples='-128samples' if args.nsamples == 128 else ''), repo_type="model", token=hf_key)
+    create_repo(output_huggingface_gptq.format(bit=args.low_quant_method, lang=args.dataset_subset, nsamples='-128samples' if args.nsamples == 128 else '', random_seed=f'-{args.seed}randomseed' if args.seed != 1234 else ''), repo_type="model", token=hf_key)
 
     api = HfApi(token=hf_key)
 
     api.upload_folder(
         folder_path=save_file,
-        repo_id=output_huggingface_gptq.format(bit=args.low_quant_method, lang=args.dataset_subset, nsamples='-128samples' if args.nsamples == 128 else ''),
+        repo_id=output_huggingface_gptq.format(bit=args.low_quant_method, lang=args.dataset_subset, nsamples='-128samples' if args.nsamples == 128 else '', random_seed=f'-{args.seed}randomseed' if args.seed != 1234 else ''),
         repo_type="model",
     )
