@@ -68,21 +68,23 @@ parser.add_argument("--quantization_technique", type=str)
 parser.add_argument("--lang", type=str)
 parser.add_argument("--bit", type=int)
 parser.add_argument("--nsamples", type=int, choices=[None, 128, 512])
+parser.add_argument("--random_seed", type=int, default=1234)
 args = parser.parse_args()
 quantization_technique = args.quantization_technique
 model_id = args.model_id
 lang = args.lang
 bit = args.bit
 nsamples = args.nsamples
+random_seed = args.random_seed
 print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit - {nsamples} samples")
 
 """## Modify task's yaml"""
 
 # eval_languages = ["arb_Arab", "eng_Latn", "cmn_Hans", "hin_Deva", "fra_Latn", "jpn_Jpan", "zsm_Latn", "kor_Hang", "tam_Taml", "ind_Latn", "swh_Latn", "tel_Telu", "npi_Deva", "yor_Latn"]
-eval_languages = ["eng_Latn", "swh_Latn", "cmn_Hans"]
+eval_languages = ["eng_Latn", "tam_Taml", "ind_Latn", "swh_Latn", "cmn_Hans"]
 #eval_languages = ["afr_Latn", "dan_Latn", "deu_Latn", "fao_Latn", "isl_Latn", "lim_Latn", "ltz_Latn", "nld_Latn", "nno_Latn", "nob_Latn", "swe_Latn", "tpi_Latn", "ydd_Hebr"]
-eval_languages.extend(["kan_Knda", "mal_Mlym", "tam_Taml", "tel_Telu"])
-eval_languages.extend(["ace_Latn", "ban_Latn", "bjn_Latn", "bug_Latn", "ceb_Latn", "fij_Latn", "ilo_Latn", "ind_Latn", "jav_Latn", "min_Latn", "plt_Latn", "mri_Latn", "pag_Latn", "smo_Latn", "sun_Latn", "fil_Latn", "war_Latn", "zsm_Latn"])
+# eval_languages.extend(["kan_Knda", "mal_Mlym", "tam_Taml", "tel_Telu"])
+# eval_languages.extend(["ace_Latn", "ban_Latn", "bjn_Latn", "bug_Latn", "ceb_Latn", "fij_Latn", "ilo_Latn", "ind_Latn", "jav_Latn", "min_Latn", "plt_Latn", "mri_Latn", "pag_Latn", "smo_Latn", "sun_Latn", "fil_Latn", "war_Latn", "zsm_Latn"])
 #eval_languages.extend(["bem_Latn", "cjk_Latn", "ibo_Latn", "kam_Latn", "kik_Latn", "kin_Latn", "kmb_Latn", "ktu_Latn", "lin_Latn", "lua_Latn", "lug_Latn", "nso_Latn", "nya_Latn", "run_Latn", "sna_Latn", "sot_Latn", "ssw_Latn", "swh_Latn", "tsn_Latn", "tso_Latn", "tum_Latn", "umb_Latn", "xho_Latn", "yor_Latn", "zul_Latn"])
 #eval_languages.extend(["bod_Tibt", "dzo_Tibt", "kac_Latn", "lus_Latn", "mni_Beng", "mya_Mymr", "yue_Hant"])
 
@@ -219,7 +221,7 @@ from lm_eval import simple_evaluate
 # Eval Language on the Task's Yaml Section
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
-batch_size = 1
+batch_size = 32
 # bit = 32
 
 # Model
@@ -233,7 +235,7 @@ bit = bit
 default_yaml = False
 
 # Evaluation
-evaluation_dataset = "floresplus-evaluate"
+evaluation_dataset = f"floresplus-evaluate{'' if random_seed == 1234 else '-' + str(random_seed)}"
 num_shot = None
 apply_chat_template = True
 enable_thinking = False
@@ -301,6 +303,7 @@ wandb_config = {
     'enable_thinking': enable_thinking,
     'default_yaml': default_yaml,
     'output_type': "perplexity",
+    'random_seed': random_seed,
 }
 wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-perplexity{'-128samples' if num_calibration_samples == 128 else ''}"
 
@@ -337,14 +340,15 @@ def lm_eval_hflm(model, tokenizer, device: str):
     gptqmodel=True,
 )
 
-def evaluate_perplexity(model_id, tokenizer_id, ds, batch_size):
+def evaluate_perplexity(model_id, tokenizer_id, ds, batch_size, random_seed=1234):
   perplexity = evaluate.load(f"{os.path.join(os.path.dirname(evaluate.__file__), f'metrics/perplexity/perplexity.py')}", module_type="metric")
 
   results = perplexity.compute(model_id=model_id,
                             tokenizer_id=tokenizer_id,
                             add_start_token=True,
                             predictions=ds,
-                            batch_size=batch_size)
+                            batch_size=batch_size,
+                            seed=random_seed)
   return results
 
 
@@ -364,7 +368,7 @@ def eval_model(model, tasks, device='cpu'):
       log_samples=False,
       write_out=False,
       batch_size=batch_size,
-      random_seed=1234,
+      random_seed=random_seed,
   )
 
 if __name__ == "__main__":
@@ -375,7 +379,7 @@ if __name__ == "__main__":
     # tokenizer = AutoTokenizer.from_pretrained(model_id, token=hf_key)
     # model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device, token=hf_key)
 
-    if evaluation_dataset == "floresplus-evaluate":
+    if "floresplus-evaluate" in evaluation_dataset:
         pass
     elif quantization_technique == "Unquantized":
         model = lm_eval_vllm(model_id, tokenizer_id, device=device_str)
@@ -391,9 +395,9 @@ if __name__ == "__main__":
         if evaluation_dataset == "floresplus-evaluate":
             ds = load_dataset("openlanguagedata/flores_plus", lang, split="devtest", token=hf_key)
             if quantization_technique == "Unquantized":
-                result_tmp = evaluate_perplexity(model_id, tokenizer_id, ds=ds['text'], batch_size=batch_size)
+                result_tmp = evaluate_perplexity(model_id, tokenizer_id, ds=ds['text'], batch_size=batch_size, random_seed=random_seed)
             else:
-                result_tmp = evaluate_perplexity(output_huggingface_gptq, tokenizer_id, ds=ds['text'], batch_size=batch_size)
+                result_tmp = evaluate_perplexity(output_huggingface_gptq, tokenizer_id, ds=ds['text'], batch_size=batch_size, random_seed=random_seed)
             result = {lang: result_tmp}
         else:
             result = eval_model(model, tasks, device=device_str)

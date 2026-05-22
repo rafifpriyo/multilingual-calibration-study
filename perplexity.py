@@ -101,8 +101,12 @@ class Perplexity(evaluate.Metric):
         )
 
     def _compute(
-        self, predictions, model_id, tokenizer_id, batch_size: int = 1, add_start_token: bool = True, device=None, max_length=None
+        self, predictions, model_id, tokenizer_id, batch_size: int = 1, add_start_token: bool = True, device=None, max_length=None, seed=1234,
     ):
+        import random
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
 
         if device is not None:
             assert device in ["gpu", "cpu", "cuda"], "device should be either gpu or cpu."

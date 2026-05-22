@@ -198,7 +198,7 @@ print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit - {nsamples}
 # Eval Language on the Task's Yaml Section
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
-batch_size = 1
+batch_size = 16
 # bit = 32
 
 # Model
@@ -349,7 +349,7 @@ if __name__ == "__main__":
 
     result_dict = {}
     for lang in eval_languages:
-        tasks = [f"massive_intent_classifier_{lang}"]
+        tasks = [f"massive_scenario_classifier_{lang}"]
         result = eval_model(model, tasks, device_str=device_str)
 
         for key in result.keys():
