@@ -160,12 +160,14 @@ parser.add_argument("--quantization_technique", type=str)
 parser.add_argument("--lang", type=str)
 parser.add_argument("--bit", type=int)
 parser.add_argument("--nsamples", type=int, choices=[None, 128, 512])
+parser.add_argument("--random_seed", type=int, default=1234)
 args = parser.parse_args()
 quantization_technique = args.quantization_technique
 model_id = args.model_id
 lang = args.lang
 bit = args.bit
 nsamples = args.nsamples
+random_seed = args.random_seed
 print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit - {nsamples} samples")
 
 """## Parameter"""
@@ -185,7 +187,7 @@ bit = bit
 default_yaml = False
 
 # Evaluation
-evaluation_dataset = "multiblimp"
+evaluation_dataset = f"multiblimp{'' if random_seed == 1234 else '-' + str(random_seed)}"
 num_shot = None
 apply_chat_template = True
 enable_thinking = False
@@ -253,6 +255,7 @@ wandb_config = {
     'enable_thinking': enable_thinking,
     'default_yaml': default_yaml,
     'output_type': "multiple_choice",
+    "random_seed": random_seed,
 }
 wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-multiplechoice{'-128samples' if num_calibration_samples == 128 else ''}"
 
@@ -268,9 +271,9 @@ def lm_eval_vllm(model, tokenizer, device: str):
     dtype = "bfloat16" if "aya-expanse" not in args.model_id and args.quantization_technique != "gptq" else "float16",
     batch_size=batch_size,
     enable_thinking = enable_thinking,
-    enforce_eager=True,
+    enforce_eager=False,
     max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
-    gpu_memory_utilization=0.56,
+    gpu_memory_utilization=0.80,
 )
 
 def lm_eval_hflm(model, tokenizer, device: str):
@@ -302,7 +305,10 @@ def eval_model(model, tasks, device='cpu'):
       log_samples=False,
       write_out=False,
       batch_size=batch_size,
-      random_seed=1234,
+      random_seed=random_seed,
+      numpy_random_seed=random_seed,
+      torch_random_seed=random_seed,
+      fewshot_random_seed=random_seed,
   )
 
 if __name__ == "__main__":
