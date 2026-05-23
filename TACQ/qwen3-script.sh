@@ -109,7 +109,7 @@ do
                             --lang ${dataset} \
                             --bit ${wbits} \
                             --nsamples ${nsamples} \
-                            --save_path $importances_dir/$run_name/ \
+                            --save_path $importances_dir/$run_name \
                             --seed $serial_number \
 
                     done
