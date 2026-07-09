@@ -7,6 +7,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from sinq.patch_model import AutoSINQHFModel
 from sinq.sinqlinear import BaseQuantizeConfig
 
+import os
 from dotenv import load_dotenv
 from huggingface_hub import create_repo
 from huggingface_hub import HfApi
@@ -19,7 +20,7 @@ def quantize_sinq(model_name, device, bit, save_dir, group_size=128, random_seed
     torch.cuda.manual_seed(random_seed)
     
     
-    torch_dtype = "bfloat16" if "aya" not in model_name else "float16"
+    torch_dtype = torch.bfloat16 if "aya" not in model_name else torch.float16
 
     model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=torch_dtype)
     tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=True if "aya" in model_name else False)
@@ -63,6 +64,9 @@ if __name__ == "__main__":
     hf_key = os.environ["HF_KEY"]
     wandb_key = os.environ["WANDB_KEY"]
 
+    from huggingface_hub import login
+    login(token=hf_key)
+
     parser = argparse.ArgumentParser("args_gptq")
     parser.add_argument("--model_id", type=str)
     parser.add_argument("--bit", type=int)
@@ -76,7 +80,7 @@ if __name__ == "__main__":
     # Specify save dir with its name
     save_dir = f"./output/{model_id}-{bit}bit" + "" if random_seed == 1234 else f"-{random_seed}randomseed"
 
-    qmodel = quantize_sinq(model_id, "cuda", bit, save_dir random_seed=random_seed)
+    qmodel = quantize_sinq(model_id, "cuda", bit, save_dir, random_seed=random_seed)
 
     """# Upload to Huggingface"""
     repo_name = f"fifrio/{model_id.split('/')[-1]}-sinq-{bit}bit-128samples{('-' + str(random_seed) + 'randomseed') if random_seed != 1234 else ''}"
