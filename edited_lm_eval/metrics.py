@@ -306,7 +306,7 @@ def mean_stderr(arr):
     aggregation="bypass",
 )
 def bypass(items):
-    return None
+    return items
 
 
 @register_metric(

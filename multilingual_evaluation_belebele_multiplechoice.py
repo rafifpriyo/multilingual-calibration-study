@@ -284,7 +284,8 @@ if __name__ == "__main__":
     with open(output_result_bnb, 'wb') as file:
         pickle.dump(result, file)
 
-    # print(result)
+    print(result["results"].keys())
+    print(result["results"][result["results"].keys()[0]].keys())
 
     # Script from the lm_eval library
     import json
@@ -318,14 +319,16 @@ if __name__ == "__main__":
 
             task_index = 0
             task = k.split("_")[0]
-            lang = "_".join(k.split("_")[:-2])
-            acc, stderr = 0, 0
+            lang = "_".join(k.split("_")[-2:])
+            acc, stderr, answers = 0, 0, []
             for m, v in dic.items():
                 # print(m, dic)
                 if m.endswith("_stderr,none"):
                     stderr = v
                 if m.endswith("acc,none"):
                     acc = v
+                if m.endswith("answers,none"):
+                    answers = v
                 if m == 'alias':
                     continue
 
@@ -352,7 +355,7 @@ if __name__ == "__main__":
                 #     pass
                 # k = ""
                 # version = ""
-            tasks_values[task_index].append([task, lang, version, acc, stderr])
+            tasks_values[task_index].append([task, lang, version, acc, stderr, answers])
         md_writer.value_matrix = values
         latex_writer.value_matrix = values
 
@@ -371,9 +374,10 @@ if __name__ == "__main__":
     ) as run:
         # Log Accuracy
         clean_result = make_table(result)[0]
-        for task_name, lang_eval, task_version, accuracy, stderr in clean_result:
+        for task_name, lang_eval, task_version, accuracy, stderr, answers in clean_result:
             run.summary[f"{task_name}_acc_{lang_eval}"] = accuracy
             run.summary[f"{task_name}_stderr_{lang_eval}"] = stderr
+            run.summary[f"{task_name}_answers_{lang_eval}"] = answers
         run.config["Execution Time"] = exec_time
 
         # Log Result
