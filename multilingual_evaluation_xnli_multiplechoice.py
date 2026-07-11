@@ -19,7 +19,7 @@ import ruamel.yaml
 yaml = ruamel.yaml.YAML()
 
 import torch
-# from lm_eval.models.huggingface import HFLM
+from lm_eval.models.huggingface import HFLM
 from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
 
@@ -57,7 +57,8 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-eval_languages = ["ar", "en", "zh", "hi", "fr", "ru", "bg", "el", "th", "ur", "sw"]
+# eval_languages = ["ar", "en", "zh", "hi", "fr", "ru", "bg", "el", "th", "ur", "sw"]
+eval_languages = ["en", "zh", "sw"]
 
 for lang in eval_languages:
     import lm_eval
@@ -83,6 +84,7 @@ Learn from the pattern and choose correctly'
     #     print(f"Yaml file content After overwrite: {f.read()}")
 
 import importlib
+import lm_eval
 importlib.reload(lm_eval)
 from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
@@ -195,16 +197,33 @@ wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{l
 """# Function"""
 
 def lm_eval_vllm(model, tokenizer, device: str):
-#   return HFLM(
   return VLLM(
+    # non-gptq uses VLLM
     pretrained = model,
     tokenizer = tokenizer,
     trust_remote_code = True,
     device = device,
-    dtype = "auto",
+    dtype = "bfloat16" if "aya-expanse" not in args.model_id and args.quantization_technique != "gptq" else "float16",
     batch_size=batch_size,
     enable_thinking = enable_thinking,
-    gpu_memory_utilization=0.75,
+    enforce_eager=False,
+    max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
+    gpu_memory_utilization=0.58,
+)
+
+def lm_eval_hflm(model, tokenizer, device: str):
+  return HFLM(
+    # non-gptq uses VLLM
+    pretrained = model,
+    tokenizer = tokenizer,
+    trust_remote_code = True,
+    device = device,
+    dtype = "bfloat16" if "aya-expanse" not in args.model_id and args.quantization_technique != "gptq" else "float16",
+    batch_size=batch_size,
+    enable_thinking = enable_thinking,
+    # gptq uses HFLM
+    max_length=40960 if "aya-expanse" not in args.model_id else 8192,
+    gptqmodel=True,
 )
 
 def eval_model(model, device='cpu'):
@@ -234,13 +253,16 @@ if __name__ == "__main__":
 
     if quantization_technique == "Unquantized":
         model = lm_eval_vllm(model_id, tokenizer_id, device=device_str)
+    elif quantization_technique == "gptq":
+        model = lm_eval_hflm(output_huggingface_gptq, tokenizer_id, device=device_str)
     else:
         model = lm_eval_vllm(output_huggingface_gptq, tokenizer_id, device=device_str)
 
     result = eval_model(model, device=device_str)
 
+    exec_time = time.time() - start_time
     print(f"Finish Evaluating")
-    print(f"Time span: {time.time()-start_time}")
+    print(f"Time span: {exec_time}")
 
     import pickle
     with open(output_result_bnb, 'wb') as file:
@@ -336,6 +358,7 @@ if __name__ == "__main__":
         for task_name, lang_eval, task_version, accuracy, stderr in clean_result:
             run.summary[f"{task_name}_acc_{lang_eval}"] = accuracy
             run.summary[f"{task_name}_stderr_{lang_eval}"] = stderr
+        run.config["Execution Time"] = exec_time
 
         # Log Result
         # columns = ["Eval Dataset", "Result"]

@@ -59,6 +59,25 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 eval_languages = ["en", "ta", "id", "zh"]
 
+if "en" in eval_languages:
+    import lm_eval
+    import shutil
+    if not os.path.exists(f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/okapi/arc_multilingual/arc_en.yaml')}"):
+        update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/okapi/arc_multilingual/arc_en.yaml')}"
+        update_yaml_file = f"""
+include: _arc_yaml
+task: arc_en
+dataset_path: alexandrainst/m_arc
+dataset_name: en
+training_split: train
+validation_split: validation
+test_split: test
+"""
+        """# Parameter"""
+        with open(update_yaml_path, 'w') as f:
+            data = yaml.load(update_yaml_file)
+            yaml.dump(data, f)
+
 # Argument
 import argparse
 

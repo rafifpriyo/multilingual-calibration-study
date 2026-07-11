@@ -143,7 +143,7 @@ if __name__ == "__main__":
                 inp = trainenc.input_ids[:, i:j]
                 tar = inp.clone()  #unshifted
                 tar[:, :-1] = -100  #only last token contributes to loss
-                trainloader.append(tokenizer.decode(inp, skip_special_tokens=True))
+                trainloader.append(tokenizer.decode(inp[0].tolist(), skip_special_tokens=True))
             # return trainloader, testenc
             return trainloader
         
@@ -158,7 +158,7 @@ if __name__ == "__main__":
 
         # Preprocess the data into the format the model is trained with.
         def preprocess(example):
-            return {"text": tokenizer.apply_chat_template(chat_template(example), tokenize=False,)}
+            return {"text": tokenizer.apply_chat_template(chat_template(example), tokenize=False,)}["text"]
             # return {"text": example["text"]}
         train_loader = list(map(preprocess, train_loader))
 

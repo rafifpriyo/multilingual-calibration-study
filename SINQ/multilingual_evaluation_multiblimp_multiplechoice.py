@@ -22,6 +22,7 @@ import torch
 from lm_eval.models.huggingface import HFLM
 from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
+from sinq.patch_model import AutoSINQHFModel
 
 import numpy as np
 import pandas as pd
@@ -57,23 +58,99 @@ PROJECT = "calibration-on-quantized-multilingual"
 
 """## Modify task's yaml"""
 
-# eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ms", "ko", "el", "id", "sw", "te", "ne", "mg"]   # FULL
-# eval_languages = ["ar", "en", "zh", "hi", "fr", "ja", "ko", "bn", "id", "sw", "yo"]   # LITE
-eval_languages = ["en", "zh", "id", "sw"]
+eval_languages = ["eng", "tam", "idn", "swa", "zhoblimp"]
 
 import lm_eval
+
+# zhoblimp yet implemented in lm-eval==0.4.9.1
 import shutil
-if not os.path.exists(f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/mmlu_prox/en/_mmlu_prox_lite_en.yaml')}"):
-    shutil.copytree(f"{os.path.dirname(__file__)}/mmlu_prox", f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/mmlu_prox/')}", dirs_exist_ok=True)
+if not os.path.exists(f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/zhoblimp')}"):
+    shutil.copytree(f"{os.path.dirname(__file__)}/zhoblimp", f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/zhoblimp')}")
 
+update_util_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/multiblimp/swa_utils.py')}"
+update_util_file = '''
+from functools import partial
 
-import lm_eval
+def _choice_from_example(example):
+    return [example['0'][0] + " " + example['1'][0], example['0'][1] + " " + example['1'][1]]
+
+doc_to_choice = _choice_from_example
+'''
+with open(update_util_path, 'w') as f:
+    f.write(update_util_file)
+# with open(update_util_path, 'r') as f:
+#     print(f.read())
+
+# Add Swahili yaml  # Download the data first from the github
+update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/multiblimp/multiblimp_swa.yaml')}"
+# with open(update_yaml_path, 'r') as f:
+#     print(f"Yaml file content: {f.read()}")
+update_yaml_file = f"""
+task: multiblimp_swa
+dataset_path: json
+dataset_kwargs:
+  data_files:
+    train: {os.path.dirname(__file__)}/syntactic_generalization_multilingual/suites/swahili-*.json
+output_type: multiple_choice
+test_split: train
+doc_to_text: ""
+target_delimiter: ""
+doc_to_target: 0
+doc_to_choice: !function swa_utils.doc_to_choice
+num_fewshot: 0
+metric_list:
+  - metric: acc
+    aggregation: mean
+    higher_is_better: true
+  - metric: acc_norm
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 0
+"""
+
+"""# Parameter"""
+with open(update_yaml_path, 'w') as f:
+    data = yaml.load(update_yaml_file)
+    yaml.dump(data, f)
+
+# Add Swahili yaml  # Download the data first from the github
+update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/multiblimp/multiblimp_idn.yaml')}"
+# with open(update_yaml_path, 'r') as f:
+#     print(f"Yaml file content: {f.read()}")
+update_yaml_file = f"""
+task: multiblimp_idn
+dataset_path: json
+dataset_kwargs:
+  data_files:
+    train: {os.path.dirname(__file__)}/BHASA/lindsea/id/syntax/*.jsonl
+output_type: multiple_choice
+test_split: train
+doc_to_text: ""
+target_delimiter: ""
+doc_to_target: 0
+doc_to_choice: "{{{{[correct, wrong]}}}}"
+num_fewshot: 0
+metric_list:
+  - metric: acc
+    aggregation: mean
+    higher_is_better: true
+  - metric: acc_norm
+    aggregation: mean
+    higher_is_better: true
+metadata:
+  version: 0
+"""
+
+"""# Parameter"""
+with open(update_yaml_path, 'w') as f:
+    data = yaml.load(update_yaml_file)
+    yaml.dump(data, f)
+
 import importlib
 importlib.reload(lm_eval)
 from lm_eval.models.vllm_causallms import VLLM
 from lm_eval import simple_evaluate
-
-
 
 # Argument
 import argparse
@@ -81,16 +158,14 @@ import argparse
 parser = argparse.ArgumentParser("args_gptq")
 parser.add_argument("--model_id", type=str)
 parser.add_argument("--quantization_technique", type=str)
-parser.add_argument("--lang", type=str)
 parser.add_argument("--bit", type=int)
-parser.add_argument("--nsamples", type=int, choices=[None, 128, 512])
+parser.add_argument("--random_seed", type=int, default=1234)
 args = parser.parse_args()
 quantization_technique = args.quantization_technique
 model_id = args.model_id
-lang = args.lang
 bit = args.bit
-nsamples = args.nsamples
-print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit - {nsamples} samples")
+random_seed = args.random_seed
+print(f"{quantization_technique} - {bit}-bit")
 
 """## Parameter"""
 # Eval Language on the Task's Yaml Section
@@ -102,17 +177,15 @@ batch_size = 1
 # Model
 model_id = model_id
 tokenizer_id = model_id
-# lang = "Unquantized"
-lang = lang
 quantization_technique = quantization_technique
 bit = bit
 default_yaml = False
 
 # Evaluation
-evaluation_dataset = "mmluproxlite"
-num_shot = 5
+evaluation_dataset = f"multiblimp{'' if random_seed == 1234 else '-' + str(random_seed)}"
+num_shot = None
 apply_chat_template = True
-enable_thinking = True
+enable_thinking = False
 
 if quantization_technique == "Unquantized":
     # Unquantized
@@ -129,7 +202,6 @@ elif quantization_technique == "gptq":
     quantization_technique = "gptq"
     granularity = "group"
     group_size = 128
-    num_calibration_samples = nsamples
     max_sequence_length = 2048
     symmetry = False
 elif quantization_technique == "slimllm":
@@ -138,7 +210,6 @@ elif quantization_technique == "slimllm":
     quantization_technique = "slimllm"
     granularity = "group"
     group_size = 128
-    num_calibration_samples = nsamples
     max_sequence_length = 2048
     symmetry = False
 elif quantization_technique == "tacq":
@@ -147,23 +218,30 @@ elif quantization_technique == "tacq":
     quantization_technique = "tacq"
     granularity = "group"
     group_size = 128
-    num_calibration_samples = nsamples
     max_sequence_length = 2048
+    symmetry = False
+elif quantization_technique == "sinq":
+    # SINQ
+    ## Quantization Config
+    quantization_technique = "sinq"
+    granularity = "group"
+    group_size = 128
+    num_calibration_samples = None
+    max_sequence_length = None
     symmetry = False
 
 
-output_path_bnb = f"./{model_id.split('/')[-1]}_{quantization_technique}_{bit}bit_{lang}"
-output_result_bnb = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{lang}_{'think' if enable_thinking else 'nothink'}.pkl"
+output_path_bnb = f"./{model_id.split('/')[-1]}_{quantization_technique}_{bit}bit"
+output_result_bnb = f"./{evaluation_dataset}_{num_shot}shot_{quantization_technique}_{bit}bit_{'think' if enable_thinking else 'nothink'}.pkl"
 
 # WandB Logging
 if quantization_technique == "Unquantized":
     output_huggingface_gptq = None
 else:
-    output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-calibration-{lang}{'-128samples' if num_calibration_samples == 128 else ''}"
+    output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-128samples{f'-{random_seed}randomseed' if random_seed != 1234 else ''}"
 wandb_config = {
     'base_model': model_id,
     'quantization_technique': quantization_technique,
-    'calibration_language': lang,
     'bit_width': f"{bit}-bit",
     "granularity": granularity,
     "group_size": group_size,
@@ -177,8 +255,9 @@ wandb_config = {
     'enable_thinking': enable_thinking,
     'default_yaml': default_yaml,
     'output_type': "multiple_choice",
+    "random_seed": random_seed,
 }
-wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-multiplechoice{'-128samples' if num_calibration_samples == 128 else ''}"
+wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-multiplechoice{'-128samples' if num_calibration_samples == 128 else ''}"
 
 """# Function"""
 
@@ -194,7 +273,7 @@ def lm_eval_vllm(model, tokenizer, device: str):
     enable_thinking = enable_thinking,
     enforce_eager=False,
     max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
-    gpu_memory_utilization=0.58,
+    gpu_memory_utilization=0.80,
 )
 
 def lm_eval_hflm(model, tokenizer, device: str):
@@ -209,13 +288,13 @@ def lm_eval_hflm(model, tokenizer, device: str):
     enable_thinking = enable_thinking,
     # gptq uses HFLM
     max_length=40960 if "aya-expanse" not in args.model_id else 8192,
-    gptqmodel=True,
+    gptqmodel=False,
 )
 
-def eval_model(model, device='cpu'):
+def eval_model(model, tasks, device='cpu'):
   return simple_evaluate(
       model=model,
-      tasks=[f"mmlu_prox_lite_{lang}" for lang in eval_languages],
+      tasks=tasks,
             # "xwinograd",
             #  "xstorycloze"],
       device=device,
@@ -226,7 +305,10 @@ def eval_model(model, device='cpu'):
       log_samples=False,
       write_out=False,
       batch_size=batch_size,
-      random_seed=1234,
+      random_seed=random_seed,
+      numpy_random_seed=random_seed,
+      torch_random_seed=random_seed,
+      fewshot_random_seed=random_seed,
   )
 
 if __name__ == "__main__":
@@ -239,12 +321,19 @@ if __name__ == "__main__":
 
     if quantization_technique == "Unquantized":
         model = lm_eval_vllm(model_id, tokenizer_id, device=device_str)
-    elif quantization_technique == "gptq":
-        model = lm_eval_hflm(output_huggingface_gptq, tokenizer_id, device=device_str)
+    elif quantization_technique == "sinq":
+        model = AutoSINQHFModel.from_quantized_safetensors(
+            output_huggingface_gptq,
+            device=device,
+            compute_dtype=torch.float16 if "aya" in output_huggingface_gptq else torch.bfloat16,
+        )
+        model = lm_eval_hflm(model, tokenizer_id, device=device_str)
     else:
         model = lm_eval_vllm(output_huggingface_gptq, tokenizer_id, device=device_str)
 
-    result = eval_model(model, device=device_str)
+    tasks = [f"multiblimp_{lang}" for lang in eval_languages if lang != 'zhoblimp']
+    tasks.append("zhoblimp")
+    result = eval_model(model, tasks, device=device_str)
 
     exec_time = time.time() - start_time
     print(f"Finish Evaluating")
@@ -254,7 +343,8 @@ if __name__ == "__main__":
     with open(output_result_bnb, 'wb') as file:
         pickle.dump(result, file)
 
-    # print(result)
+    print(result["results"].keys())
+    print(result["results"][result["results"].keys()[0]].keys())
 
     # Script from the lm_eval library
     import json
@@ -280,22 +370,26 @@ if __name__ == "__main__":
         tasks_values = [[]]
 
         for k, dic in sorted(file_json["results"].items()):
-            if "_" not in k:
+            if "_" not in k and k != "zhoblimp":
                 continue
 
             version = file_json["versions"][k]
             percent = k == "squad2"
 
             task_index = 0
-            task = "".join(k.split("_")[:3])
+            task = k.split("_")[0]
             lang = k.split("_")[-1]
-            acc, stderr = 0, 0
+            if task == 'zhoblimp':
+                task = 'multiblimp'
+            acc, stderr, answers = 0, 0, []
             for m, v in dic.items():
                 # print(m, dic)
-                if m.endswith("_stderr,none"):
+                if m.endswith("_norm_stderr,none"):
                     stderr = v
-                if m.endswith("acc,none"):
+                if m.endswith("acc_norm,none"):
                     acc = v
+                if m.endswith("answers,none"):
+                    answers = v
                 if m == 'alias':
                     continue
 
@@ -322,7 +416,7 @@ if __name__ == "__main__":
                 #     pass
                 # k = ""
                 # version = ""
-            tasks_values[task_index].append([task, lang, version, acc, stderr])
+            tasks_values[task_index].append([task, lang, version, acc, stderr, answers])
         md_writer.value_matrix = values
         latex_writer.value_matrix = values
 
@@ -334,16 +428,17 @@ if __name__ == "__main__":
     """# WandB Logging"""
 
     import pprint
-    print(make_table(result)[0])
+    # print(make_table(result)[0])
 
     with wandb.init(
         entity=ENTITY, project=PROJECT, config=wandb_config, name=wandb_runname
     ) as run:
         # Log Accuracy
         clean_result = make_table(result)[0]
-        for task_name, lang_eval, task_version, accuracy, stderr in clean_result:
+        for task_name, lang_eval, task_version, accuracy, stderr, answers in clean_result:
             run.summary[f"{task_name}_acc_{lang_eval}"] = accuracy
             run.summary[f"{task_name}_stderr_{lang_eval}"] = stderr
+            run.summary[f"{task_name}_answers_{lang_eval}"] = answers
         run.config["Execution Time"] = exec_time
 
         # Log Result

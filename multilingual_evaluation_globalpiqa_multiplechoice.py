@@ -310,7 +310,7 @@ if __name__ == "__main__":
 
             task_index = 0
             task = "".join(k.split("_")[:2])
-            lang = "_".join(k.split("_")[:-2])
+            lang = "_".join(k.split("_")[-2:])
             acc, stderr = 0, 0
             for m, v in dic.items():
                 # print(m, dic)
