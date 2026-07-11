@@ -72,7 +72,7 @@ quantization_technique = args.quantization_technique
 model_id = args.model_id
 bit = args.bit
 random_seed = args.random_seed
-print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit - {nsamples} samples")
+print(f"{quantization_technique} - {bit}-bit")
 
 """## Modify task's yaml"""
 
@@ -285,7 +285,7 @@ output_result_bnb = f"./{evaluation_dataset}_{num_shot}shot_{quantization_techni
 if quantization_technique == "Unquantized":
     output_huggingface_gptq = None
 else:
-    output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit{f'-{random_seed}randomseed' if random_seed != 1234 else ''}"
+    output_huggingface_gptq = f"fifrio/{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-128samples{f'-{random_seed}randomseed' if random_seed != 1234 else ''}"
 wandb_config = {
     'base_model': model_id,
     'quantization_technique': quantization_technique,
@@ -305,7 +305,7 @@ wandb_config = {
     'output_type': "perplexity",
     'random_seed': random_seed,
 }
-wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-perplexity{'-128samples' if num_calibration_samples == 128 else ''}"
+wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-perplexity{'-128samples' if num_calibration_samples == 128 else ''}"
 
 """# Function"""
 

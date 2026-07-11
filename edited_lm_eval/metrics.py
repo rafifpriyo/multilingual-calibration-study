@@ -627,3 +627,13 @@ def aggregate_subtask_metrics(metrics, sizes, weight_by_size=True):
     assert len(metrics) == len(sizes)
 
     return sum([metric * size for metric, size in zip(metrics, sizes)]) / sum(sizes)
+
+def aggregate_concat(metrics, sizes, weight_by_size=True):
+    # monkey-patch for flips i.e. list of right or wrong answers
+
+    assert len(metrics) == len(sizes)
+
+    concatenated_metric = []
+    from itertools import chain
+    return list(chain.from_iterable(metrics))
+    # return [metric * size for metric, size in zip(metrics, sizes)]) / sum(sizes)

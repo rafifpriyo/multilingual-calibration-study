@@ -8,6 +8,7 @@ from typing import List, Optional, Tuple, Union
 from lm_eval.api.group import ConfigurableGroup
 from lm_eval.api.metrics import (
     aggregate_subtask_metrics,
+    aggregate_concat,
     mean,
     bypass,
     pooled_sample_stderr,
@@ -460,6 +461,8 @@ def consolidate_group_results(
                     if "_stderr" not in key and key not in ["task", "alias", "samples"]
                 }
             )
+            eval_logger.info(f"#####---##### metric list: {metric_list}")
+            eval_logger.info(f"#####---##### agg metric list: {agg_metric_list}")
             for metric in metric_list:
                 stderr = "_stderr,".join(metric.split(","))
 
@@ -469,6 +472,7 @@ def consolidate_group_results(
                     for task in task_list
                     if metric in results[task]
                 ]  # TODO: copy?
+                eval_logger.info(f"#####---##### metrics: {metric}: {metrics}")
                 stderrs = [
                     results[task][stderr]
                     for task in task_list
@@ -482,11 +486,15 @@ def consolidate_group_results(
 
                 for metric_config in agg_metric_list:
                     for filter_name in metric_config["filter_list"]:
-                        if metric != ",".join([metric_config["metric"], filter_name]):
+                        if "answers" in metric and metric_config["metric"] == "acc":
+                            pass
+                        elif metric != ",".join([metric_config["metric"], filter_name]):
                             continue
 
                         # compute group's pooled metric and stderr
-                        if metric_config["aggregation"] == "mean":
+                        if "answers" in metric:
+                            aggregate_fn = aggregate_concat
+                        elif metric_config["aggregation"] == "mean":
                             aggregate_fn = aggregate_subtask_metrics
                         elif callable(metric_config["aggregation"]):
                             aggregate_fn = metric_config["aggregation"]
@@ -500,6 +508,8 @@ def consolidate_group_results(
                             sizes,
                             metric_config["weight_by_size"],
                         )
+                        
+                        eval_logger.info(f"#####---##### passed aggregate: {group_or_task}, {results[group_or_task][metric]}")
                         # TODO: calculate groups' metrics using arbitrary agg fns
                         if "N/A" in stderrs:
                             results[group_or_task][stderr] = "N/A"
