@@ -26,7 +26,7 @@ util_update_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'evaluato
 shutil.copyfile(util_source_path, util_update_path)
 
 util_source_path = f"./edited_lm_eval/evaluator_utils.py"
-util_update_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'api/evaluator_utils.py')}"
+util_update_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'evaluator_utils.py')}"
 
 shutil.copyfile(util_source_path, util_update_path)
 

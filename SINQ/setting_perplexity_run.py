@@ -9,6 +9,11 @@ util_update_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'models/v
 
 shutil.copyfile(util_source_path, util_update_path)
 
+# Multiblimp datasets
+shutil.copytree("../BHASA", "./BHASA")
+shutil.copytree("../syntactic_generalization_multilingual", "./syntactic_generalization_multilingual")
+shutil.copytree("../zhoblimp", "./zhoblimp")
+
 # True False answers for flips metric
 util_source_path = f"../edited_lm_eval/metrics.py"
 util_update_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'api/metrics.py')}"

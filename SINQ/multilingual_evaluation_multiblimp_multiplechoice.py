@@ -344,7 +344,7 @@ if __name__ == "__main__":
         pickle.dump(result, file)
 
     print(result["results"].keys())
-    print(result["results"][result["results"].keys()[0]].keys())
+    print(result["results"][list(result["results"].keys()[0])].keys())
 
     # Script from the lm_eval library
     import json
