@@ -340,7 +340,7 @@ def lm_eval_hflm(model, tokenizer, device: str):
     gptqmodel=True,
 )
 
-def evaluate_perplexity(model_id, tokenizer_id, ds, batch_size, random_seed=1234):
+def evaluate_perplexity(model_id, tokenizer_id, ds, batch_size, random_seed=1234, torch_dtype=torch.float16):
   perplexity = evaluate.load(f"{os.path.join(os.path.dirname(evaluate.__file__), f'metrics/perplexity/perplexity.py')}", module_type="metric")
 
   results = perplexity.compute(model_id=model_id,
@@ -348,7 +348,8 @@ def evaluate_perplexity(model_id, tokenizer_id, ds, batch_size, random_seed=1234
                             add_start_token=True,
                             predictions=ds,
                             batch_size=batch_size,
-                            seed=random_seed)
+                            seed=random_seed,
+                            torch_dtype=torch_dtype)
   return results
 
 
@@ -395,9 +396,11 @@ if __name__ == "__main__":
         if evaluation_dataset == "floresplus-evaluate":
             ds = load_dataset("openlanguagedata/flores_plus", lang, split="devtest", token=hf_key)
             if quantization_technique == "Unquantized":
-                result_tmp = evaluate_perplexity(model_id, tokenizer_id, ds=ds['text'], batch_size=batch_size, random_seed=random_seed)
+                result_tmp = evaluate_perplexity(model_id, tokenizer_id, ds=ds['text'], batch_size=batch_size, random_seed=random_seed, torch_dtype = torch.bfloat16 if "aya-expanse" not in args.model_id else torch.float16)
+            elif quantization_technique == "gptq":
+                result_tmp = evaluate_perplexity(output_huggingface_gptq, tokenizer_id, ds=ds['text'], batch_size=batch_size, random_seed=random_seed, torch_dtype = None)
             else:
-                result_tmp = evaluate_perplexity(output_huggingface_gptq, tokenizer_id, ds=ds['text'], batch_size=batch_size, random_seed=random_seed)
+                result_tmp = evaluate_perplexity(output_huggingface_gptq, tokenizer_id, ds=ds['text'], batch_size=batch_size, random_seed=random_seed, torch_dtype = torch.bfloat16 if "aya-expanse" not in args.model_id else torch.float16)
             result = {lang: result_tmp}
         else:
             result = eval_model(model, tasks, device=device_str)

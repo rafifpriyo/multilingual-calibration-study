@@ -46,6 +46,7 @@ def importances_to_mask_top_p_sparse(
         # Early exit if no elements are to be selected
         return {k: torch.zeros_like(v, dtype=torch.bool) for k, v in importances.items()}
 
+    # If memory error, try flashinfer's top_k (OOM) or Lazy Tensor argKMin
     _, top_indices = torch.topk(full_importances, k_select)
 
     print("Top indices selected")

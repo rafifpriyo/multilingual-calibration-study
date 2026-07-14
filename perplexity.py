@@ -101,7 +101,7 @@ class Perplexity(evaluate.Metric):
         )
 
     def _compute(
-        self, predictions, model_id, tokenizer_id, batch_size: int = 1, add_start_token: bool = True, device=None, max_length=None, seed=1234,
+        self, predictions, model_id, tokenizer_id, batch_size: int = 1, add_start_token: bool = True, device=None, max_length=None, seed=1234, torch_dtype=torch.float16,
     ):
         import random
         random.seed(seed)
@@ -115,8 +115,8 @@ class Perplexity(evaluate.Metric):
         else:
             device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        model = AutoModelForCausalLM.from_pretrained(model_id)
-        model = model.to(device)
+        model = AutoModelForCausalLM.from_pretrained(model_id, device_map = "auto", torch_dtype=torch_dtype)
+        # model = model.to(device)
 
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)
 
@@ -124,7 +124,7 @@ class Perplexity(evaluate.Metric):
         # if there is not an already assigned pad_token, assign an existing
         # special token to also be the padding token
         if tokenizer.pad_token is None and batch_size > 1:
-            existing_special_tokens = list(tokenizer.special_tokens_map_extended.values())
+            existing_special_tokens = list(filter(None, tokenizer._special_tokens_map.values()))
             # check that the model already has at least one special token defined
             assert (
                 len(existing_special_tokens) > 0
@@ -197,5 +197,8 @@ class Perplexity(evaluate.Metric):
             mask_valid += (~torch.isnan(perplexity_batch) & ~torch.isinf(perplexity_batch)).tolist()
             ppls += perplexity_batch.tolist()
             token_len += token_len_batch.tolist()
+
+            model.to("cpu")
+            del model
 
         return {"perplexities": ppls, "mean_perplexity": np.mean(np.array(ppls)[np.array(mask_valid)]), "mask_valid": mask_valid, "token_length": token_len, "token_perplexity": np.sum(np.array(ppls)[np.array(mask_valid)]) / np.sum(np.array(token_len)[np.array(mask_valid)])}

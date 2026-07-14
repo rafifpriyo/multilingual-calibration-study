@@ -121,7 +121,7 @@ class Perplexity(evaluate.Metric):
         model = AutoSINQHFModel.from_quantized_safetensors(
             model_id,
             device=device,
-            compute_dtype=torch.float16 if "aya" not in model_id else torch.bfloat16,
+            compute_dtype=torch.float16 if "aya" in model_id else torch.bfloat16,
         )
 
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)
@@ -203,5 +203,8 @@ class Perplexity(evaluate.Metric):
             mask_valid += (~torch.isnan(perplexity_batch) & ~torch.isinf(perplexity_batch)).tolist()
             ppls += perplexity_batch.tolist()
             token_len += token_len_batch.tolist()
+
+        model.to("cpu")
+        del model
 
         return {"perplexities": ppls, "mean_perplexity": np.mean(np.array(ppls)[np.array(mask_valid)]), "mask_valid": mask_valid, "token_length": token_len, "token_perplexity": np.sum(np.array(ppls)[np.array(mask_valid)]) / np.sum(np.array(token_len)[np.array(mask_valid)])}

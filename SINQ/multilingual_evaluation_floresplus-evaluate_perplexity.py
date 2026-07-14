@@ -417,8 +417,8 @@ if __name__ == "__main__":
     with open(output_result_bnb, 'wb') as file:
         pickle.dump(result, file)
 
-    print(result["results"].keys())
-    print(result["results"][list(result["results"].keys())[0]].keys())
+    print(result.keys())
+    print(result[list(result.keys())[0]].keys())
 
     # Script from the lm_eval library
     import json

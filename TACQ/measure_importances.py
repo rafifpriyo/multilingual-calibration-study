@@ -47,7 +47,7 @@ def main(args):
     elif args.gradient_dtype == "float16":
         full_32_precision = False
         brainfloat = False
-    model_info = load_model(args.model, checkpoints_dir=args.checkpoints_dir, full_32_precision=full_32_precision, brainfloat=brainfloat)
+    model_info = load_model(args.model, device_map="cpu", checkpoints_dir=args.checkpoints_dir, full_32_precision=full_32_precision, brainfloat=brainfloat)
     model, tokenizer = model_info["model"], model_info["tokenizer"]
     dataset = preprocess_calibration_datasets(args, tokenizer=tokenizer, indices_for_choices=None, n_calibration_points=args.n_calibration_points)
     importances = None
