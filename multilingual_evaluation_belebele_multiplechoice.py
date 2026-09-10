@@ -58,6 +58,8 @@ PROJECT = "calibration-on-quantized-multilingual"
 """## Modify task's yaml"""
 
 eval_languages = ["eng_Latn", "tam_Taml", "ind_Latn", "swh_Latn", "zho_Hans"]
+# eval_languages = ["ceb_Latn", "ilo_Latn", "jav_Latn", "mri_Latn", "plt_Latn", "sun_Latn", "war_Latn"]
+# eval_languages = ["bod_Tibt", "kac_Latn", "mya_Mymr", "zho_Hant"]
 
 import lm_eval
 update_yaml_path = f"{os.path.join(os.path.dirname(lm_eval.__file__), f'tasks/belebele/_default_template_yaml')}"
