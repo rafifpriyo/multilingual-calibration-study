@@ -15,7 +15,8 @@ def load_model(engine, checkpoints_dir, device_map = "auto", full_32_precision=F
             base_model_name = engine.split("_")[0]
         loadstring = model_loadstring_dict[base_model_name] + "/" +  base_model_name
         tokenizer = AutoTokenizer.from_pretrained(loadstring)
-        model = AutoModelForCausalLM.from_pretrained(loadstring, device_map=device_map).to(device_map if device_map != "auto" else "cuda")
+        # model = AutoModelForCausalLM.from_pretrained(loadstring, device_map=device_map).to(device_map if device_map != "auto" else "cuda")
+        model = AutoModelForCausalLM.from_pretrained(loadstring, device_map=device_map)
         print("Base mdodel loaded, now replacing with save state dict.")
         devices_mapper = {}
         for name, module in model.named_parameters():
@@ -24,7 +25,7 @@ def load_model(engine, checkpoints_dir, device_map = "auto", full_32_precision=F
         model.load_state_dict(loaded_state_dict)
         for key, param in model.named_parameters():
             param.data = param.data.to(devices_mapper[key])
-        model.to(device_map)
+        # model.to(device_map)
     elif engine.endswith("qlora_model"): 
         bnb_config = BitsAndBytesConfig(
                             load_in_4bit=True,
@@ -47,7 +48,7 @@ def load_model(engine, checkpoints_dir, device_map = "auto", full_32_precision=F
         loadstring = model_loadstring_dict[engine] + "/" +  engine
         model = AutoModelForCausalLM.from_pretrained(loadstring, device_map=device_map)
         tokenizer = AutoTokenizer.from_pretrained(loadstring)
-        model.to(device_map if device_map != "auto" else "cuda")
+        # model.to(device_map if device_map != "auto" else "cuda")
 
     print("Model loaded of type:", type(model))
     if not full_32_precision:

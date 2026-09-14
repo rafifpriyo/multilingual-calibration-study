@@ -122,8 +122,8 @@ def grad_attributor(args, model_name, corrupt_model_name, dataset, masking_funct
     torch.cuda.empty_cache()
 
     # Postprocess
-    corrupt_model = load_model(engine=corrupt_model_name, checkpoints_dir=checkpoints_dir, full_32_precision=False, brainfloat=False, device_map="auto")["model"].to("cuda")
-    model = load_model(engine=model_name, checkpoints_dir=checkpoints_dir, full_32_precision=False, brainfloat=False, device_map="auto")["model"].to("cpu")
+    corrupt_model = load_model(engine=corrupt_model_name, checkpoints_dir=checkpoints_dir, full_32_precision=False, brainfloat=False, device_map="auto")["model"]
+    model = load_model(engine=model_name, checkpoints_dir=checkpoints_dir, full_32_precision=False, brainfloat=False, device_map="auto")["model"]
     total_time = time.time() - start_time
     print(f"Time Used To Capture Importances: {total_time}")
     print(f"Scores {accumulated_gradient=}")
