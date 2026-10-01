@@ -250,7 +250,7 @@ wandb_config = {
     'default_yaml': default_yaml,
     'output_type': "multiple_choice",
 }
-wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{lang}-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-multiplechoice{'-128samples' if num_calibration_samples == 128 else ''}"
+wandb_runname = f"{model_id.split('/')[-1]}-{quantization_technique}-{bit}bit-{evaluation_dataset}-{'think' if enable_thinking else 'nothink'}-multiplechoice{'-128samples' if num_calibration_samples == 128 else ''}"
 
 """# Function"""
 

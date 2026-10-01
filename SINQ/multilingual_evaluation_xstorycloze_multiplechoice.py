@@ -197,7 +197,7 @@ def lm_eval_hflm(model, tokenizer, device: str):
 def eval_model(model, device='cpu'):
   return simple_evaluate(
       model=model,
-      tasks=[f"xcopa_{lang}" for lang in eval_languages],
+      tasks=[f"xstorycloze_{lang}" for lang in eval_languages],
             # "xwinograd",
             #  "xstorycloze"],
       device=device,

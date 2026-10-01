@@ -65,11 +65,11 @@ update_yaml_file = f"""
 # by the harness.
 tag: mgsm_cot_native
 dataset_path: CohereLabs/global-mgsm
+training_split: null
 dataset_name: null  # Overridden by language-specific config.
 output_type: generate_until
-training_split: null
 test_split: test
-description: "{{{{instruction}}}}"
+description: "{{{{ instruction }}}}"
 generation_kwargs:
   until:
     - "\\n\\n"
@@ -108,13 +108,13 @@ doc_to_text: '{{% if answer is not none %}}{{{{question+"\nStep-by-Step Answer:"
 filter_list:
 - filter:
   - function: regex
-    regex_pattern: "Answer: (-?[0-9.,]+)"
+    regex_pattern: "Answer: (-?[0-9]+)"
   - function: take_first
   name: strict-match
 - filter:
   - function: regex
     group_select: -1
-    regex_pattern: (-?[$0-9]{{2,}})|(-?[0-9]+)
+    regex_pattern: (-?[0-9]{{2,}})|(-?[0-9]+)
   - function: take_first
   name: flexible-extract
 generation_kwargs:
@@ -148,7 +148,7 @@ filter_list:
 - filter:
   - function: regex
     group_select: -1
-    regex_pattern: (-?[$0-9]{{2,}})|(-?[0-9]+)
+    regex_pattern: (-?[0-9]{{2,}})|(-?[0-9]+)
   - function: take_first
   name: flexible-extract
 generation_kwargs:
@@ -182,7 +182,7 @@ filter_list:
 - filter:
   - function: regex
     group_select: -1
-    regex_pattern: (-?[$0-9]{{2,}})|(-?[0-9]+)
+    regex_pattern: (-?[0-9]{{2,}})|(-?[0-9]+)
   - function: take_first
   name: flexible-extract
 generation_kwargs:
@@ -213,13 +213,13 @@ doc_to_text: '{{% if answer is not none %}}{{{{question+"\nபடிபடிய
 filter_list:
 - filter:
   - function: regex
-    regex_pattern: "பதில் (\\\\-?[0-9\\\\.\\\\,]+)"
+    regex_pattern: "பதில்: (-?[0-9]+)"
   - function: take_first
   name: strict-match
 - filter:
   - function: regex
     group_select: -1
-    regex_pattern: (-?[$0-9.,]{{2,}})|(-?[0-9]+)
+    regex_pattern: (-?[0-9]{{2,}})|(-?[0-9]+)
   - function: take_first
   name: flexible-extract
 generation_kwargs:
@@ -250,13 +250,13 @@ doc_to_text: '{{% if answer is not none %}}{{{{question+"\nJawaban Langkah demi 
 filter_list:
 - filter:
   - function: regex
-    regex_pattern: "Jawabannya adalah (\\\\-?[0-9\\\\.\\\\,]+)"
+    regex_pattern: "Jawabannya adalah (-?[0-9]+)"
   - function: take_first
   name: strict-match
 - filter:
   - function: regex
     group_select: -1
-    regex_pattern: (-?[$0-9.,]{{2,}})|(-?[0-9]+)
+    regex_pattern: (-?[0-9]{{2,}})|(-?[0-9]+)
   - function: take_first
   name: flexible-extract
 generation_kwargs:
@@ -302,7 +302,7 @@ print(f"{quantization_technique} - Calibrated on {lang} - {bit}-bit - {nsamples}
 # Eval Language on the Task's Yaml Section
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 device_str = 'cuda' if torch.cuda.is_available() else 'cpu'
-batch_size = 1
+batch_size = 4 if quantization_technique != "gptq" else 8
 # bit = 32
 
 # Model
@@ -318,7 +318,7 @@ default_yaml = False
 evaluation_dataset = f"mgsm{'' if random_seed == 1234 else '-' + str(random_seed)}"
 num_shot = 5
 apply_chat_template = True
-enable_thinking = False
+enable_thinking = True
 
 if quantization_technique == "Unquantized":
     # Unquantized
@@ -402,6 +402,7 @@ def lm_eval_vllm(model, tokenizer, device: str):
     enforce_eager=False,
     max_model_len=40960 if "aya-expanse" not in args.model_id else 8192,
     gpu_memory_utilization=0.80,
+    max_gen_toks=1024,
 )
 
 def lm_eval_hflm(model, tokenizer, device: str):
@@ -417,6 +418,7 @@ def lm_eval_hflm(model, tokenizer, device: str):
     # gptq uses HFLM
     max_length=40960 if "aya-expanse" not in args.model_id else 8192,
     gptqmodel=True,
+    max_gen_toks=1024,
 )
 
 def eval_model(model, device='cpu'):
@@ -499,13 +501,13 @@ if __name__ == "__main__":
 
             task_index = 0
             task = k.split("_")[0]
-            lang = "_".join(k.split("_")[-1])
+            lang = k.split("_")[-1]
             strict, flexible, answers = 0, 0, []
             for m, v in dic.items():
                 # print(m, dic)
                 if m.endswith("exact_match,strict-match"):
                     strict = v
-                if m.endswith("exact_match,flexible-match"):
+                if m.endswith("exact_match,flexible-extract"):
                     flexible = v
                 if m == 'alias':
                     continue
@@ -533,7 +535,7 @@ if __name__ == "__main__":
                 #     pass
                 # k = ""
                 # version = ""
-            tasks_values[task_index].append([task, lang, version, strict, flexible])
+            tasks_values[task_index].append([task, lang, version, strict, flexible, answers])
         md_writer.value_matrix = values
         latex_writer.value_matrix = values
 
@@ -552,9 +554,10 @@ if __name__ == "__main__":
     ) as run:
         # Log Accuracy
         clean_result = make_table(result)[0]
-        for task_name, lang_eval, task_version, strict, flexible in clean_result:
+        for task_name, lang_eval, task_version, strict, flexible, answers in clean_result:
             run.summary[f"{task_name}_strict_{lang_eval}"] = strict
             run.summary[f"{task_name}_flexible_{lang_eval}"] = flexible
+            run.summary[f"{task_name}_answers_{lang_eval}"] = answers
         run.config["Execution Time"] = exec_time
 
         # Log Result
